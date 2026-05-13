@@ -11,13 +11,21 @@ function getAverage(player, statKey) {
   return (total / gamesPlayed).toFixed(1);
 }
 
-function getPercentage(made, att) {
+function getPercentage(made, attempts) {
   const m = Number(made ?? 0);
-  const a = Number(att ?? 0);
+  const a = Number(attempts ?? 0);
 
-  if (att === 0) return "0%";
+  if (!a || a <= 0 || m == 0) {
+    return "0%";
+  }
 
-  return `${((m / att) * 100).toFixed(1)}%`;
+  const percentage = (m / a) * 100;
+
+  if (Number.isNaN(percentage)) {
+    return "0%";
+  }
+
+  return `${percentage.toFixed(1)}%`;
 }
 
 const statCards = [
@@ -191,7 +199,7 @@ function PlayerStatRow({ rank, player, stat }) {
   return (
     <div className="flex items-center justify-between rounded-2xl bg-[#2D2A2A] p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F1D1D] text-sm font-bold text-[#FFFFFF80]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F1D1D] text-sm font-bold text-[#2ECC71]">
           {rank}
         </div>
 
@@ -216,10 +224,10 @@ function PlayerStatRow({ rank, player, stat }) {
 
 function StatsBottomSheet({ stat, players, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60">
+    <div className="fixed inset-0 z-100 bg-black/60">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} />
 
-      <div className="absolute bottom-0 left-0 right-0 max-h-[80vh] rounded-t-3xl bg-[#1F1D1D] p-4">
+      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[80vh] rounded-t-3xl bg-[#1F1D1D] p-4">
         <div className="mx-auto mb-4 h-1 w-12 rounded-full text-[#FFFFFF80]" />
 
         <div className="mb-4 flex items-center justify-between">

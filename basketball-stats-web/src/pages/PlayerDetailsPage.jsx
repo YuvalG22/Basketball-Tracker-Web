@@ -34,19 +34,19 @@ export default function PlayerDetailsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-white">
-                    נגד {game.opponent_name}
+                    vs {game.opponent_name}
                   </div>
 
-                  <div className="mt-1 text-xs text-[#FFFFFF80]">
-                    מחזור {game.round_number}
+                  <div className="mt-1 text-xs text-[#FFFFFF80] text-start">
+                    Round {game.round_number}
                   </div>
                 </div>
 
                 <div className="text-left">
-                  <div className="text-xl font-bold text-[#2ECC71]">
+                  <div className="text-xl font-bold text-[#2ECC71] text-end">
                     {game.points}
                   </div>
-                  <div className="text-xs text-[#FFFFFF80]">PTS</div>
+                  <div className="text-xs text-end text-[#FFFFFF80]">PTS</div>
                 </div>
               </div>
 
@@ -125,16 +125,16 @@ function GameStatsBottomSheet({ game, onClose }) {
   const ftAttempts = Number(game.ft_made) + Number(game.ft_miss);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60">
+    <div className="fixed inset-0 z-100 bg-black/60">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} />
 
-      <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#1F1D1D] p-5">
+      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#1F1D1D] p-5">
         <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-[#FFFFFF40]" />
 
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">נגד {game.opponent_name}</h2>
-            <p className="text-sm text-[#FFFFFF80]">מחזור {game.round_number}</p>
+            <h2 className="text-2xl font-bold">vs {game.opponent_name}</h2>
+            <p className="text-sm text-[#FFFFFF80]">Round {game.round_number}</p>
           </div>
 
           <button
