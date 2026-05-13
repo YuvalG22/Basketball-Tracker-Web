@@ -1,5 +1,5 @@
 import axios from "axios";
 
 export const apiClient = axios.create({
-  baseURL: "http://192.168.1.197:3000",
+  baseURL: "https://basketball-tracker-api.onrender.com",
 });
