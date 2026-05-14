@@ -13,7 +13,7 @@ export default function GameDetailsPage() {
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>{error.message}</p>;
 
-  const { game, players } = data;
+  const { game, players, events = [] } = data;
 
   const homeTeamName = game.is_home_game ? "Afeka" : game.opponent_name;
   const awayTeamName = game.is_home_game ? game.opponent_name : "Afeka";
@@ -85,10 +85,6 @@ export default function GameDetailsPage() {
                           <div className="truncate text-xs font-bold text-white">
                             {player.player_name}
                           </div>
-
-                          {/* <div className="text-[8px] text-[#FFFFFF80]">
-                            #{player.player_number}
-                          </div> */}
                         </div>
                       </div>
                     </td>
@@ -125,6 +121,40 @@ export default function GameDetailsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+      <div className="rounded-3xl bg-[#1F1D1D] p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Play by Play</h2>
+          <span className="text-sm text-[#FFFFFF80]">
+            {events.length} events
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          {events.map((event) => {
+            if (event.type === "PERIOD_START") {
+              return (
+                <QuarterSeparator
+                  key={event.id}
+                  period={event.period}
+                  isStart
+                />
+              );
+            }
+
+            if (event.type === "PERIOD_END") {
+              return (
+                <QuarterSeparator
+                  key={event.id}
+                  period={event.period}
+                  isStart={false}
+                />
+              );
+            }
+
+            return <PlayByPlayRow key={event.id} event={event} />;
+          })}
         </div>
       </div>
     </section>
@@ -188,6 +218,116 @@ function TeamScoreRow({ name, score, isWinner }) {
       >
         {score}
       </div>
+    </div>
+  );
+}
+
+function formatClock(seconds) {
+  const total = Number(seconds ?? 0);
+  const min = Math.floor(total / 60);
+  const sec = total % 60;
+
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
+function formatEventType(type) {
+  const labels = {
+    TWO_MADE: "2PT Made",
+    TWO_MISS: "2PT Miss",
+    THREE_MADE: "3PT Made",
+    THREE_MISS: "3PT Miss",
+    FT_MADE: "FT Made",
+    FT_MISS: "FT Miss",
+    REB_DEF: "Def Reb",
+    REB_OFF: "Off Reb",
+    AST: "Ast",
+    STL: "Stl",
+    BLK: "Blk",
+    TOV: "Tov",
+    FOUL: "Foul",
+    OPP_TWO_MADE: "2PT",
+    OPP_THREE_MADE: "3PT",
+    OPP_FT_MADE: "FT",
+  };
+
+  return labels[type] ?? type;
+}
+
+function PlayByPlayRow({ event }) {
+  const isOpponent = event.type.startsWith("OPP");
+
+  return (
+    <div
+      className={`flex items-center ${
+        isOpponent ? "justify-start" : "justify-end"
+      }`}
+    >
+      <div
+        className={`flex items-center gap-3 ${
+          isOpponent ? "flex-row" : "flex-row-reverse"
+        }`}
+      >
+        <div className="text-xs font-bold text-white">
+          {formatClock(event.clock_sec_remaining)}
+        </div>
+
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2D2A2A] text-sm font-bold text-[#2ECC71]">
+          {getPointsFromEvent(event.type)}
+        </div>
+
+        <div
+          className={`flex items-center gap-2 ${
+            isOpponent ? "flex-row" : "flex-row-reverse"
+          }`}
+        >
+          <span className="text-[18px] font-bold text-white">
+            {event.team_score_at_event} - {event.opponent_score_at_event}
+          </span>
+
+          <span className="text-[#FFFFFF80] text-sm">
+            {event.player_name ?? "Opponent"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getPointsFromEvent(type) {
+  switch (type) {
+    case "TWO_MADE":
+    case "OPP_TWO_MADE":
+      return 2;
+
+    case "THREE_MADE":
+    case "OPP_THREE_MADE":
+      return 3;
+
+    case "FT_MADE":
+    case "OPP_FT_MADE":
+      return 1;
+
+    default:
+      return "";
+  }
+}
+
+function QuarterSeparator({ period, isStart }) {
+  return (
+    <div className="my-4 flex items-center gap-3">
+      <div className="h-px flex-1 bg-[#2D2A2A]" />
+
+      <div
+        className={`rounded-full px-4 py-1 text-xs font-bold ${
+          isStart
+            ? "bg-[#2ECC71]/20 text-[#2ECC71]"
+            : "bg-[#2D2A2A] text-[#FFFFFF80]"
+        }`}
+      >
+        {isStart ? `START Q${period}` : `END Q${period}`}
+      </div>
+
+      <div className="h-px flex-1 bg-[#2D2A2A]" />
     </div>
   );
 }
