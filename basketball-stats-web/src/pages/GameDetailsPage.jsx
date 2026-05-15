@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getGameDetails } from "../api/gamesApi";
@@ -21,6 +22,8 @@ export default function GameDetailsPage() {
   const homeScore = game.is_home_game ? game.team_score : game.opponent_score;
   const awayScore = game.is_home_game ? game.opponent_score : game.team_score;
 
+  const periodScores = getPeriodScores(events, game.is_home_game);
+
   return (
     <section className="space-y-5">
       <GameHeader
@@ -29,6 +32,7 @@ export default function GameDetailsPage() {
         awayTeamName={awayTeamName}
         homeScore={homeScore}
         awayScore={awayScore}
+        periodScores={periodScores}
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_420px]">
@@ -41,6 +45,25 @@ export default function GameDetailsPage() {
 }
 
 function BoxScoreSection({ players }) {
+  const [sortKey, setSortKey] = useState("points");
+  const [sortDirection, setSortDirection] = useState("desc");
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("desc");
+    }
+  }
+
+  const sortedPlayers = [...players].sort((a, b) => {
+    const aValue = Number(a[sortKey] ?? 0);
+    const bValue = Number(b[sortKey] ?? 0);
+
+    return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+  });
+
   return (
     <div className="min-w-0">
       <div className="mb-3 flex items-center justify-between">
@@ -58,20 +81,74 @@ function BoxScoreSection({ players }) {
                 Player
               </th>
 
-              <th className="px-2 py-3 text-center">PTS</th>
-              <th className="px-2 py-3 text-center">REB</th>
-              <th className="px-2 py-3 text-center">AST</th>
-              <th className="px-2 py-3 text-center">STL</th>
-              <th className="px-2 py-3 text-center">BLK</th>
-              <th className="px-2 py-3 text-center">TOV</th>
-              <th className="px-2 py-3 text-center">2PT</th>
-              <th className="px-2 py-3 text-center">3PT</th>
-              <th className="px-2 py-3 text-center">FT</th>
+              <SortableTh
+                label="PTS"
+                field="points"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="REB"
+                field="rebounds"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="AST"
+                field="assists"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="STL"
+                field="steals"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="BLK"
+                field="blocks"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="TOV"
+                field="turnovers"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="2PT"
+                field="two_made"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="3PT"
+                field="three_made"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <SortableTh
+                label="FT"
+                field="ft_made"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
             </tr>
           </thead>
 
           <tbody>
-            {players.map((player) => {
+            {sortedPlayers.map((player) => {
               const twoAttempts =
                 Number(player.two_made) + Number(player.two_miss);
 
@@ -183,6 +260,7 @@ function GameHeader({
   awayTeamName,
   homeScore,
   awayScore,
+  periodScores,
 }) {
   const homeWon = Number(homeScore) > Number(awayScore);
   const awayWon = Number(awayScore) > Number(homeScore);
@@ -199,18 +277,58 @@ function GameHeader({
         </div>
       </div>
 
-      <div className="space-y-4">
-        <TeamScoreRow
-          name={homeTeamName}
-          score={homeScore}
-          isWinner={homeWon}
-        />
+      <div className="mt-6 rounded-2xl bg-[#2D2A2A] p-3">
+        <div className="grid grid-cols-6 gap-2 text-center text-xs text-[#FFFFFF80]">
+          <div></div>
 
-        <TeamScoreRow
-          name={awayTeamName}
-          score={awayScore}
-          isWinner={awayWon}
-        />
+          {periodScores.map((p) => (
+            <div key={p.period}>Q{p.period}</div>
+          ))}
+
+          <div>FT</div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-6 gap-2 text-center text-sm">
+          <div className="truncate text-left text-[#FFFFFF80]">
+            {homeTeamName}
+          </div>
+
+          {periodScores.map((p) => (
+            <div
+              className={`font-bold ${p.away < p.home ? "text-white" : "text-[#FFFFFF80]"}`}
+              key={p.period}
+            >
+              {p.home}
+            </div>
+          ))}
+
+          <div
+            className={`font-bold ${awayScore < homeScore ? "text-[#2ECC71]" : ""}`}
+          >
+            {homeScore}
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-6 gap-2 text-center text-sm">
+          <div className="truncate text-left text-[#FFFFFF80]">
+            {awayTeamName}
+          </div>
+
+          {periodScores.map((p) => (
+            <div
+              className={`font-bold ${p.away > p.home ? "text-white" : "text-[#FFFFFF80]"}`}
+              key={p.period}
+            >
+              {p.away}
+            </div>
+          ))}
+
+          <div
+            className={`${awayScore > homeScore ? "text-[#2ECC71] font-bold" : ""}`}
+          >
+            {awayScore}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -323,4 +441,75 @@ function getPointsFromEvent(type) {
     default:
       return "";
   }
+}
+
+function getPointsFromEventForTeam(type) {
+  switch (type) {
+    case "TWO_MADE":
+      return 2;
+    case "THREE_MADE":
+      return 3;
+    case "FT_MADE":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function getPointsFromEventForOpponent(type) {
+  switch (type) {
+    case "OPP_TWO_MADE":
+      return 2;
+    case "OPP_THREE_MADE":
+      return 3;
+    case "OPP_FT_MADE":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function getPeriodScores(events, isHomeGame) {
+  return [1, 2, 3, 4].map((period) => {
+    const periodEvents = events.filter(
+      (event) => Number(event.period) === period,
+    );
+
+    const teamScore = periodEvents.reduce(
+      (sum, event) => sum + getPointsFromEventForTeam(event.type),
+      0,
+    );
+
+    const opponentScore = periodEvents.reduce(
+      (sum, event) => sum + getPointsFromEventForOpponent(event.type),
+      0,
+    );
+
+    return {
+      period,
+      home: isHomeGame ? teamScore : opponentScore,
+      away: isHomeGame ? opponentScore : teamScore,
+    };
+  });
+}
+
+function SortableTh({ label, field, sortKey, sortDirection, onSort }) {
+  const active = sortKey === field;
+
+  return (
+    <th className="px-2 py-3 text-center">
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`inline-flex items-center justify-center gap-1 font-semibold ${
+          active ? "text-[#2ECC71]" : "text-[#FFFFFF80]"
+        }`}
+      >
+        <span>{label}</span>
+        <span className="text-[10px]">
+          {active ? (sortDirection === "desc" ? "↓" : "↑") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
 }
