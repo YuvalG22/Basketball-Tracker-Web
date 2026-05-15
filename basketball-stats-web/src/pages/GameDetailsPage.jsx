@@ -153,7 +153,7 @@ export default function GameDetailsPage() {
               );
             }
 
-            return <PlayByPlayRow key={event.id} event={event} />;
+            return <PlayByPlayRow key={event.id} event={event} opponent_name={game.opponent_name} />;
           })}
         </div>
       </div>
@@ -253,7 +253,7 @@ function formatEventType(type) {
   return labels[type] ?? type;
 }
 
-function PlayByPlayRow({ event }) {
+function PlayByPlayRow({ event, opponent_name }) {
   const isOpponent = event.type.startsWith("OPP");
 
   return (
@@ -285,7 +285,7 @@ function PlayByPlayRow({ event }) {
           </span>
 
           <span className="text-[#FFFFFF80] text-sm">
-            {event.player_name ?? "Opponent"}
+            {event.player_name ?? opponent_name}
           </span>
         </div>
       </div>
