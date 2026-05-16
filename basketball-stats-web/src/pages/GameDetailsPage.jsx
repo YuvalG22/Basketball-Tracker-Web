@@ -74,7 +74,7 @@ function BoxScoreSection({ players }) {
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D]">
-        <table className="w-full min-w-[620px] border-collapse text-xs">
+        <table className="w-full min-w-155 border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#2D2A2A] text-[#FFFFFF80]">
               <th className="sticky left-0 bg-[#1F1D1D] px-3 py-3 text-left font-semibold">
@@ -164,7 +164,7 @@ function BoxScoreSection({ players }) {
                   className="border-b border-[#2D2A2A] last:border-b-0"
                 >
                   <td className="sticky left-0 bg-[#1F1D1D] px-2 py-3">
-                    <div className="flex w-[120px] items-center gap-2">
+                    <div className="flex w-30 items-center gap-2">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2D2A2A] text-[10px] font-bold text-[#2ECC71]">
                         {player.player_number}
                       </div>
@@ -217,7 +217,7 @@ function PlayByPlaySection({ events, opponentName }) {
         <span className="text-sm text-[#FFFFFF80]">{events.length} events</span>
       </div>
 
-      <div className="rounded-3xl bg-[#1F1D1D] p-4 xl:max-h-[620px] xl:overflow-y-auto">
+      <div className="rounded-3xl bg-[#1F1D1D] p-4 xl:max-h-155 xl:overflow-y-auto">
         <div className="space-y-4">
           {events.map((event) => {
             if (event.type === "PERIOD_START") {

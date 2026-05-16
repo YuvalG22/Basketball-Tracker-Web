@@ -89,6 +89,11 @@ const statCards = [
     label: "3PT",
     key: "threem",
   },
+  {
+    title: "Free Throws",
+    label: "FT",
+    key: "ftm",
+  },
 ];
 
 export default function SeasonStatsPage() {
