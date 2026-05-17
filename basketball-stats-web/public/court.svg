@@ -1,0 +1,103 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="500"
+    height="500"
+    viewBox="0 0 15 14"
+    fill="none"
+>
+    <!-- Background -->
+    <rect
+        x="0"
+        y="0"
+        width="15"
+        height="14"
+        fill="#1F1D1D"
+    />
+
+    <!-- Outer court -->
+    <rect
+        x="0"
+        y="0"
+        width="15"
+        height="14"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Three point line -->
+    <path
+        d="M0.9 0 L0.9 2.99 A6.75 6.75 0 0 0 14.1 2.99 L14.1 0"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Paint -->
+    <rect
+        x="5.05"
+        y="0"
+        width="4.9"
+        height="5.8"
+        fill="#000000"
+        fill-opacity="0.63"
+        stroke="white"
+        stroke-width="0.08"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Free throw arc -->
+    <path
+        d="M5.7 5.8 A1.8 1.8 0 0 0 9.3 5.8"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Bottom arc -->
+    <path
+        d="M5.7 14 A1.8 1.8 0 0 1 9.3 14"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Backboard -->
+    <path
+        d="M6.5 1.2 L8.5 1.2"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+
+    <!-- Hoop -->
+    <circle
+        cx="7.5"
+        cy="1.575"
+        r="0.225"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+    />
+
+    <!-- Restricted area -->
+    <path
+        d="M6.25 1.575 A1.25 1.25 0 0 0 8.75 1.575"
+        stroke="white"
+        stroke-width="0.08"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+</svg>

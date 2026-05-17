@@ -19,7 +19,11 @@ export default function PlayerDetailsPage() {
 
   return (
     <section className="space-y-5">
-      <PlayerHeader player={player} averages={averages} gamesCount={games.length} />
+      <PlayerHeader
+        player={player}
+        averages={averages}
+        gamesCount={games.length}
+      />
 
       <div>
         <h2 className="mb-3 text-xl font-bold">Games</h2>
@@ -120,6 +124,7 @@ function MiniStat({ label, value }) {
 }
 
 function GameStatsBottomSheet({ game, onClose }) {
+  const [shotFilter, setShotFilter] = useState("all");
   const twoAttempts = Number(game.two_made) + Number(game.two_miss);
   const threeAttempts = Number(game.three_made) + Number(game.three_miss);
   const ftAttempts = Number(game.ft_made) + Number(game.ft_miss);
@@ -134,7 +139,9 @@ function GameStatsBottomSheet({ game, onClose }) {
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">vs {game.opponent_name}</h2>
-            <p className="text-sm text-[#FFFFFF80]">Round {game.round_number}</p>
+            <p className="text-sm text-[#FFFFFF80]">
+              Round {game.round_number}
+            </p>
           </div>
 
           <button
@@ -159,8 +166,38 @@ function GameStatsBottomSheet({ game, onClose }) {
 
           <div className="space-y-3 text-sm">
             <ShotRow label="2PT" made={game.two_made} attempts={twoAttempts} />
-            <ShotRow label="3PT" made={game.three_made} attempts={threeAttempts} />
+            <ShotRow
+              label="3PT"
+              made={game.three_made}
+              attempts={threeAttempts}
+            />
             <ShotRow label="FT" made={game.ft_made} attempts={ftAttempts} />
+          </div>
+          <div className="mt-5 rounded-2xl bg-[#2D2A2A] p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-bold">Shot Map</h3>
+              <div className="flex items-center gap-2">
+                <FilterButton
+                  label="All"
+                  active={shotFilter === "all"}
+                  onClick={() => setShotFilter("all")}
+                />
+
+                <FilterButton
+                  label="Makes"
+                  active={shotFilter === "makes"}
+                  onClick={() => setShotFilter("makes")}
+                />
+
+                <FilterButton
+                  label="Misses"
+                  active={shotFilter === "misses"}
+                  onClick={() => setShotFilter("misses")}
+                />
+              </div>
+            </div>
+
+            <ShotChart shots={game.shots ?? []} filter={shotFilter} />
           </div>
         </div>
       </div>
@@ -180,5 +217,64 @@ function ShotRow({ label, made, attempts }) {
         {made}/{attempts} · {percentage}%
       </span>
     </div>
+  );
+}
+
+function ShotChart({ shots, filter }) {
+  const filteredShots = shots.filter((shot) => {
+    const isMade = shot.type === "TWO_MADE" || shot.type === "THREE_MADE";
+
+    if (filter === "makes") {
+      return isMade;
+    }
+
+    if (filter === "misses") {
+      return !isMade;
+    }
+
+    return true;
+  });
+  return (
+    <div className="relative mx-auto aspect-[15/14] w-full max-w-[320px] overflow-hidden bg-[#1F1D1D] border border-[#FFFFFF20]">
+      <img
+        src="/court.svg"
+        alt="Basketball court"
+        className="absolute inset-0 h-full w-full object-fill"
+      />
+      {filteredShots.map((shot, index) => {
+        const x = Number(shot.shot_x);
+        const y = Number(shot.shot_y);
+
+        const isMade = shot.type === "TWO_MADE" || shot.type === "THREE_MADE";
+
+        return (
+          <div
+            key={index}
+            className={`absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border ${
+              isMade
+                ? "bg-[#2ECC71] border-white"
+                : "bg-red-400 border-white"
+            }`}
+            style={{
+              left: `${(x / 15) * 100}%`,
+              top: `${(y / 14) * 100}%`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function FilterButton({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+        active ? "bg-[#2ECC71] text-black" : "bg-[#1F1D1D] text-[#FFFFFF80]"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
