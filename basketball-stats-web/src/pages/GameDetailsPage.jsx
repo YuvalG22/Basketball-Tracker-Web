@@ -1,7 +1,19 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { data, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getGameDetails } from "../api/gamesApi";
+import {
+  LineChart,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  ReferenceLine,
+  AreaChart,
+} from "recharts";
 
 export default function GameDetailsPage() {
   const { gameId } = useParams();
@@ -15,6 +27,8 @@ export default function GameDetailsPage() {
   if (isError) return <p>{error.message}</p>;
 
   const { game, players, events = [] } = data;
+
+  const momentumPoints = buildMomentumPoints(events, game.quarter_length_sec);
 
   const homeTeamName = game.is_home_game ? "Afeka" : game.opponent_name;
   const awayTeamName = game.is_home_game ? game.opponent_name : "Afeka";
@@ -33,6 +47,7 @@ export default function GameDetailsPage() {
         homeScore={homeScore}
         awayScore={awayScore}
         periodScores={periodScores}
+        momentumPoints={momentumPoints}
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_420px]">
@@ -261,12 +276,16 @@ function GameHeader({
   homeScore,
   awayScore,
   periodScores,
+  momentumPoints,
 }) {
   const homeWon = Number(homeScore) > Number(awayScore);
   const awayWon = Number(awayScore) > Number(homeScore);
 
+  const canShowMomentum =
+    momentumPoints.length > 0 && momentumPoints.some((p) => p.scoreDiff !== 0);
+
   return (
-    <div className="rounded-3xl bg-[#1F1D1D] p-5">
+    <div className="rounded-3xl bg-[#1F1D1D] p-4">
       <div className="mb-5 flex items-center justify-between">
         <div className="rounded-full bg-[#2D2A2A] px-3 py-1 text-xs font-bold text-[#FFFFFF80]">
           FT
@@ -276,7 +295,9 @@ function GameHeader({
           Round {game.round_number}
         </div>
       </div>
-
+      <div className={`mt-4 ${!canShowMomentum ? "hidden" : ""}`}>
+        <MomentumAreaChart momentumPoints={momentumPoints} />
+      </div>
       <div className="mt-6 rounded-2xl bg-[#2D2A2A] p-3">
         <div className="grid grid-cols-6 gap-2 text-center text-xs text-[#FFFFFF80]">
           <div></div>
@@ -303,7 +324,7 @@ function GameHeader({
           ))}
 
           <div
-            className={`font-bold ${awayScore < homeScore ? "text-[#2ECC71]" : ""}`}
+            className={`font-bold ${awayScore < homeScore ? "text-[#2ECC71]" : "text-[#FFFFFF80]"}`}
           >
             {homeScore}
           </div>
@@ -324,7 +345,7 @@ function GameHeader({
           ))}
 
           <div
-            className={`${awayScore > homeScore ? "text-[#2ECC71] font-bold" : ""}`}
+            className={`${awayScore > homeScore ? "text-[#2ECC71] font-bold" : "text-[#FFFFFF80]"}`}
           >
             {awayScore}
           </div>
@@ -512,4 +533,107 @@ function SortableTh({ label, field, sortKey, sortDirection, onSort }) {
       </button>
     </th>
   );
+}
+
+function MomentumAreaChart({ momentumPoints }) {
+  const data = momentumPoints.map((p) => ({
+    ...p,
+    positiveDiff: p.scoreDiff > 0 ? p.scoreDiff : 0,
+    negativeDiff: p.scoreDiff < 0 ? p.scoreDiff : 0,
+  }));
+
+  const maxAbs = Math.max(...data.map((d) => Math.abs(d.scoreDiff)));
+
+  return (
+    <div className="h-30 w-full rounded-2xl bg-[#2D2A2A]">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <YAxis
+            width={24}
+            domain={[-maxAbs, maxAbs]}
+            ticks={[-maxAbs, 0, maxAbs]}
+            axisLine={false}
+            tickLine={false}
+            padding={{ top: 10, bottom: 10 }}
+            tickFormatter={(value) => Math.abs(value)}
+          />
+          <ReferenceLine y={0} stroke="#999" />
+          <Area
+            type="monotone"
+            dataKey="positiveDiff"
+            stroke="#2ECC71"
+            fill="#2ECC71"
+            fillOpacity={0.8}
+            dot={false}
+            connectNulls
+            activeDot={false}
+          />
+
+          <Area
+            type="monotone"
+            dataKey="negativeDiff"
+            stroke="#E74C3C"
+            fill="#E74C3C"
+            fillOpacity={0.8}
+            dot={false}
+            connectNulls
+            activeDot={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+const SCORING_EVENTS = new Set([
+  "FT_MADE",
+  "TWO_MADE",
+  "THREE_MADE",
+  "OPPONENT_FT_MADE",
+  "OPPONENT_TWO_MADE",
+  "OPPONENT_THREE_MADE",
+]);
+
+function getGameSecond(event, quarterLengthSec = 600) {
+  return (
+    (event.period - 1) * quarterLengthSec +
+    (quarterLengthSec - event.clock_sec_remaining)
+  );
+}
+
+export function buildMomentumPoints(events, quarterLengthSec = 600) {
+  const points = events
+    .filter(
+      (event) =>
+        SCORING_EVENTS.has(event.type) &&
+        event.team_score_at_event != null &&
+        event.opponent_score_at_event != null,
+    )
+    .sort((a, b) => {
+      if (a.period !== b.period) return a.period - b.period;
+
+      if (a.clock_sec_remaining !== b.clock_sec_remaining) {
+        return b.clock_sec_remaining - a.clock_sec_remaining;
+      }
+
+      return new Date(a.created_at) - new Date(b.created_at);
+    })
+    .map((event) => {
+      const gameSecond = getGameSecond(event, quarterLengthSec);
+
+      return {
+        gameSecond,
+        minute: +(gameSecond / 60).toFixed(1),
+        scoreDiff: event.team_score_at_event - event.opponent_score_at_event,
+      };
+    });
+
+  return [
+    {
+      gameSecond: 0,
+      minute: 0,
+      scoreDiff: 0,
+    },
+    ...points,
+  ];
 }
