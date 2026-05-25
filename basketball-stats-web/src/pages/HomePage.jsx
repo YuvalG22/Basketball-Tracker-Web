@@ -13,7 +13,6 @@ export default function HomePage() {
   if (isError) return <p>{error.message}</p>;
 
   const game = data?.game;
-  const isLive = data?.type === "LIVE";
 
   if (!game) {
     return (
@@ -27,11 +26,23 @@ export default function HomePage() {
     );
   }
 
-  const homeTeamName = game.is_home_game ? "Afeka" : game.opponent_name;
-  const awayTeamName = game.is_home_game ? game.opponent_name : "A";
+  const isLive = game.status === "LIVE" || data?.type === "LIVE";
 
-  const homeScore = game.is_home_game ? game.team_score : game.opponent_score;
-  const awayScore = game.is_home_game ? game.opponent_score : game.team_score;
+  const teamScore = isLive
+    ? Number(game.live_team_score ?? game.team_score ?? 0)
+    : Number(game.team_score ?? 0);
+
+  const opponentScore = isLive
+    ? Number(game.live_opponent_score ?? game.opponent_score ?? 0)
+    : Number(game.opponent_score ?? 0);
+
+  const homeTeamName = game.is_home_game ? "Afeka" : game.opponent_name;
+  const awayTeamName = game.is_home_game ? game.opponent_name : "Afeka";
+
+  const homeScore = game.is_home_game ? teamScore : opponentScore;
+  const awayScore = game.is_home_game ? opponentScore : teamScore;
+
+  const gameLink = isLive ? `/live/${game.id}` : `/games/${game.id}`;
 
   return (
     <section className="space-y-5">
@@ -44,20 +55,27 @@ export default function HomePage() {
       </div>
 
       <Link
-        to={`/games/${game.id}`}
-        className="block rounded-3xl bg-[#1F1D1D] p-5 active:scale-[0.98]"
+        to={gameLink}
+        className={`block rounded-3xl border p-5 transition active:scale-[0.98] ${
+          isLive
+            ? "border-[#2ECC71]/30 bg-[#1A241E]"
+            : "border-white/10 bg-[#1F1D1D]"
+        }`}
       >
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div
-              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                isLive
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-[#2D2A2A] text-[#FFFFFF80]"
-              }`}
-            >
-              {isLive ? "LIVE" : "FT"}
-            </div>
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${
+              isLive
+                ? "bg-[#2ECC71]/15 text-[#2ECC71]"
+                : "bg-[#2D2A2A] text-[#FFFFFF80]"
+            }`}
+          >
+            {isLive && <span className="h-2 w-2 rounded-full bg-[#2ECC71]" />}
+            {isLive
+              ? `LIVE • Q${game.current_period ?? 1} • ${formatClock(
+                  game.clock_sec_remaining ?? 0,
+                )}`
+              : "FT"}
           </div>
 
           <div className="text-xs text-[#FFFFFF80]">
@@ -70,43 +88,53 @@ export default function HomePage() {
             name={homeTeamName}
             score={homeScore}
             isWinner={!isLive && homeScore > awayScore}
+            isLive={isLive}
           />
 
           <TeamScoreRow
             name={awayTeamName}
             score={awayScore}
             isWinner={!isLive && awayScore > homeScore}
+            isLive={isLive}
           />
         </div>
 
-        {isLive && (
-          <div className="mt-5 rounded-2xl bg-[#2D2A2A] p-3 text-center text-sm font-semibold text-red-400">
-            משחק חי מתעדכן אוטומטית
-          </div>
-        )}
+        <div className="mt-5 rounded-2xl bg-[#2D2A2A] p-3 text-center text-sm font-semibold text-[#FFFFFF80]">
+          {isLive ? "Open live game" : "Open game summary"}
+        </div>
       </Link>
     </section>
   );
 }
 
-function TeamScoreRow({ name, score, isWinner }) {
+function TeamScoreRow({ name, score, isWinner, isLive }) {
+  const active = isLive || isWinner;
+
   return (
     <div className="flex items-center justify-between">
       <div
         className={`text-lg ${
-          isWinner ? "font-bold text-white" : "font-medium text-[#FFFFFF80]"
+          active ? "font-bold text-white" : "font-medium text-[#FFFFFF80]"
         }`}
       >
         {name}
       </div>
 
       <div
-        className={`text-3xl ${
-          isWinner ? "font-bold text-white" : "font-semibold text-[#FFFFFF80]"
+        className={`text-4xl ${
+          active ? "font-black text-white" : "font-semibold text-[#FFFFFF80]"
         }`}
       >
         {score}
       </div>
     </div>
   );
+}
+
+function formatClock(seconds) {
+  const total = Math.max(0, Number(seconds ?? 0));
+  const min = Math.floor(total / 60);
+  const sec = total % 60;
+
+  return `${min}:${sec.toString().padStart(2, "0")}`;
 }
