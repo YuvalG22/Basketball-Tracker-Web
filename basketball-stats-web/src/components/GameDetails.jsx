@@ -44,8 +44,8 @@ export default function GameStatsView({
     : new Set();
 
   return (
-    <section className="flex flex-row gap-5">
-      <div className="flex flex-col w-1/3 gap-5">
+    <section className="flex flex-col gap-5 md:flex-row">
+      <div className="flex flex-col md:w-1/3 gap-5">
         <GameHeader
           game={game}
           homeTeamName={homeTeamName}
@@ -58,7 +58,7 @@ export default function GameStatsView({
         />
         <PlayByPlaySection events={events} opponentName={game.opponent_name} />
       </div>
-      <div className="w-2/3">
+      <div className="md:w-2/3">
         <BoxScoreSection
           players={players}
           onCourtPlayerIds={onCourtPlayerIds}
@@ -101,7 +101,7 @@ function BoxScoreSection({
           {players.length} players
         </span>
       </div>
-      <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D] p-4">
+      <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D]">
         <table className="w-full min-w-155 border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#2D2A2A] text-[#FFFFFF80]">
