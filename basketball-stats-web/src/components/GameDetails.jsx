@@ -21,12 +21,15 @@ export default function GameStatsView({
   isLive = false,
 }) {
   const momentumPoints = buildMomentumPoints(events, game.quarter_length_sec);
+  const onCourtPlayerIds = isLive ? getOnCourtPlayerIds(events) : new Set();
 
-  const teamScore =
-    isLive ? Number(game.live_team_score) : Number(game.team_score);
+  const teamScore = isLive
+    ? Number(game.live_team_score)
+    : Number(game.team_score);
 
-  const opponentScore =
-    isLive ? Number(game.live_opponent_score) : Number(game.opponent_score);
+  const opponentScore = isLive
+    ? Number(game.live_opponent_score)
+    : Number(game.opponent_score);
 
   const homeTeamName = game.is_home_game ? "Afeka" : game.opponent_name;
   const awayTeamName = game.is_home_game ? game.opponent_name : "Afeka";
@@ -50,7 +53,11 @@ export default function GameStatsView({
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_420px]">
-        <BoxScoreSection players={players} />
+        <BoxScoreSection
+          players={players}
+          onCourtPlayerIds={onCourtPlayerIds}
+          isLive={isLive}
+        />
 
         <PlayByPlaySection events={events} opponentName={game.opponent_name} />
       </div>
@@ -58,7 +65,11 @@ export default function GameStatsView({
   );
 }
 
-function BoxScoreSection({ players }) {
+function BoxScoreSection({
+  players,
+  onCourtPlayerIds = new Set(),
+  isLive = false,
+}) {
   const [sortKey, setSortKey] = useState("points");
   const [sortDirection, setSortDirection] = useState("desc");
 
@@ -163,6 +174,7 @@ function BoxScoreSection({ players }) {
 
           <tbody>
             {sortedPlayers.map((player) => {
+              const isOnCourt = onCourtPlayerIds.has(String(player.player_id));
               const twoAttempts =
                 Number(player.two_made) + Number(player.two_miss);
 
@@ -178,15 +190,31 @@ function BoxScoreSection({ players }) {
                   className="border-b border-[#2D2A2A] last:border-b-0"
                 >
                   <td className="sticky left-0 bg-[#1F1D1D] px-2 py-3">
-                    <div className="flex w-30 items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2D2A2A] text-[10px] font-bold text-[#2ECC71]">
+                    <div className="flex w-36 items-center gap-2">
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                          isOnCourt
+                            ? "bg-[#2ECC71] text-black"
+                            : "bg-[#2D2A2A] text-[#2ECC71]"
+                        }`}
+                      >
                         {player.player_number}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="truncate text-xs font-bold text-white">
+                        <div
+                          className={`truncate text-xs font-bold ${
+                            isOnCourt ? "text-white" : "text-white/60"
+                          }`}
+                        >
                           {player.player_name}
                         </div>
+
+                        {isLive && isOnCourt && (
+                          <div className="mt-0.5 text-[10px] font-bold text-[#2ECC71]">
+                            ON COURT
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -646,3 +674,32 @@ function getPointsFromEventForOpponent(type) {
   }
 }
 
+function getOnCourtPlayerIds(events) {
+  const onCourt = new Set();
+
+  const sortedEvents = [...events].sort((a, b) => {
+    if (Number(a.period) !== Number(b.period)) {
+      return Number(a.period) - Number(b.period);
+    }
+
+    if (Number(a.clock_sec_remaining) !== Number(b.clock_sec_remaining)) {
+      return Number(b.clock_sec_remaining) - Number(a.clock_sec_remaining);
+    }
+
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  sortedEvents.forEach((event) => {
+    if (!event.player_id) return;
+
+    if (event.type === "SUB_IN") {
+      onCourt.add(String(event.player_id));
+    }
+
+    if (event.type === "SUB_OUT") {
+      onCourt.delete(String(event.player_id));
+    }
+  });
+
+  return onCourt;
+}
