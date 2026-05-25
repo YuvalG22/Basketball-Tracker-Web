@@ -44,26 +44,26 @@ export default function GameStatsView({
     : new Set();
 
   return (
-    <section className="space-y-5">
-      <GameHeader
-        game={game}
-        homeTeamName={homeTeamName}
-        awayTeamName={awayTeamName}
-        homeScore={homeScore}
-        awayScore={awayScore}
-        periodScores={periodScores}
-        momentumPoints={momentumPoints}
-        isLive={isLive}
-      />
-
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_420px]">
+    <section className="flex flex-row gap-5">
+      <div className="flex flex-col w-1/3 gap-5">
+        <GameHeader
+          game={game}
+          homeTeamName={homeTeamName}
+          awayTeamName={awayTeamName}
+          homeScore={homeScore}
+          awayScore={awayScore}
+          periodScores={periodScores}
+          momentumPoints={momentumPoints}
+          isLive={isLive}
+        />
+        <PlayByPlaySection events={events} opponentName={game.opponent_name} />
+      </div>
+      <div className="w-2/3">
         <BoxScoreSection
           players={players}
           onCourtPlayerIds={onCourtPlayerIds}
           isLive={isLive}
         />
-
-        <PlayByPlaySection events={events} opponentName={game.opponent_name} />
       </div>
     </section>
   );
@@ -101,8 +101,7 @@ function BoxScoreSection({
           {players.length} players
         </span>
       </div>
-
-      <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D]">
+      <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D] p-4">
         <table className="w-full min-w-155 border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#2D2A2A] text-[#FFFFFF80]">
@@ -278,13 +277,10 @@ function SortableTh({ label, field, sortKey, sortDirection, onSort }) {
 function PlayByPlaySection({ events, opponentName }) {
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xl font-bold">Play by Play</h2>
-
-        <span className="text-sm text-[#FFFFFF80]">{events.length} events</span>
-      </div>
-
       <div className="rounded-3xl bg-[#1F1D1D] p-4 xl:max-h-155 xl:overflow-y-auto">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Play by Play</h2>
+        </div>
         <div className="space-y-4">
           {events.map((event) => {
             if (event.type === "PERIOD_START") {
@@ -437,6 +433,33 @@ function GameHeader({
         <div className="text-xs text-[#FFFFFF80]">
           Round {game.round_number}
         </div>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <HeaderTeam name={homeTeamName} align="left" />
+
+        <div className="text-center">
+          <div
+            className={`text-3xl font-black tracking-tight md:text-4xl ${
+              isLive ? "text-[#E8534F]" : "text-white"
+            }`}
+          >
+            {homeScore} - {awayScore}
+          </div>
+
+          <div
+            className={`mt-2 text-xl font-bold ${
+              isLive ? "text-[#E8534F]" : "text-[#FFFFFF80]"
+            }`}
+          >
+            {isLive
+              ? `Q${game.current_period} ${formatClock(
+                  game.clock_sec_remaining,
+                )}`
+              : "FINAL"}
+          </div>
+        </div>
+
+        <HeaderTeam name={awayTeamName} align="right" />
       </div>
       <div className={`mt-4 ${!canShowMomentum ? "hidden" : ""}`}>
         <MomentumAreaChart momentumPoints={momentumPoints} />
@@ -706,4 +729,22 @@ function getOnCourtPlayerIds(events) {
   });
 
   return onCourt;
+}
+
+function HeaderTeam({ name, align }) {
+  return (
+    <div
+      className={`flex flex-col items-center ${
+        align === "right" ? "justify-self-end" : "justify-self-start"
+      }`}
+    >
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#2D2A2A] text-4xl shadow-lg">
+        🏀
+      </div>
+
+      <div className="mt-3 max-w-[120px] text-center text-lg font-black text-white">
+        {name}
+      </div>
+    </div>
+  );
 }
