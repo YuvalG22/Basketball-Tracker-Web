@@ -18,10 +18,10 @@ export default function GameStatsView({
   game,
   players,
   events,
+  lineupEvents = [],
   isLive = false,
 }) {
   const momentumPoints = buildMomentumPoints(events, game.quarter_length_sec);
-  const onCourtPlayerIds = isLive ? getOnCourtPlayerIds(events) : new Set();
 
   const teamScore = isLive
     ? Number(game.live_team_score)
@@ -38,6 +38,10 @@ export default function GameStatsView({
   const awayScore = game.is_home_game ? opponentScore : teamScore;
 
   const periodScores = getPeriodScores(events, game.is_home_game);
+
+  const onCourtPlayerIds = isLive
+    ? getOnCourtPlayerIds(lineupEvents)
+    : new Set();
 
   return (
     <section className="space-y-5">

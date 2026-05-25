@@ -23,6 +23,7 @@ export default function GameDetailsPage() {
       game={data.game}
       players={data.players}
       events={data.events ?? []}
+      lineupEvents={data.lineupEvents ?? []}
       isLive={data.game.status === "LIVE"}
     />
   );
