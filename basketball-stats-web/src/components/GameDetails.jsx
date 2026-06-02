@@ -368,18 +368,14 @@ function PlayByPlayRow({ event, opponentName }) {
             {event.team_score_at_event} - {event.opponent_score_at_event}
           </span>
 
-          <div
-            className={`flex flex-col ${
-              isOpponent ? "items-start" : "items-end"
-            }`}
-          >
-            <span className="text-sm text-[#FFFFFF80]">
+          <div className={`flex flex-row items-center gap-2`}>
+            <span className="text-sm text-white">
               {event.player_name ?? opponentName}
             </span>
 
             {event.assist_player_name && (
-              <span className="text-xs text-[#2ECC71]">
-                AST: {event.assist_player_name}
+              <span className="text-xs text-[#FFFFFF80]">
+                Assist: {event.assist_player_name}
               </span>
             )}
           </div>
