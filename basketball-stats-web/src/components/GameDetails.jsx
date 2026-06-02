@@ -94,14 +94,14 @@ function BoxScoreSection({
   });
 
   return (
-    <div className="min-w-0">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="min-w-0 rounded-3xl bg-[#1F1D1D]">
+      <div className="flex items-center justify-between p-3">
         <h2 className="text-xl font-bold">Box Score</h2>
         <span className="text-sm text-[#FFFFFF80]">
           {players.length} players
         </span>
       </div>
-      <div className="overflow-x-auto rounded-3xl bg-[#1F1D1D]">
+      <div className="overflow-x-auto">
         <table className="w-full min-w-155 border-collapse text-xs">
           <thead>
             <tr className="border-b border-[#2D2A2A] text-[#FFFFFF80]">
@@ -278,7 +278,7 @@ function PlayByPlaySection({ events, opponentName }) {
   return (
     <div className="min-w-0">
       <div className="rounded-3xl bg-[#1F1D1D] p-4 xl:max-h-155 xl:overflow-y-auto">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold">Play by Play</h2>
         </div>
         <div className="space-y-4">
@@ -368,9 +368,21 @@ function PlayByPlayRow({ event, opponentName }) {
             {event.team_score_at_event} - {event.opponent_score_at_event}
           </span>
 
-          <span className="text-sm text-[#FFFFFF80]">
-            {event.player_name ?? opponentName}
-          </span>
+          <div
+            className={`flex flex-col ${
+              isOpponent ? "items-start" : "items-end"
+            }`}
+          >
+            <span className="text-sm text-[#FFFFFF80]">
+              {event.player_name ?? opponentName}
+            </span>
+
+            {event.assist_player_name && (
+              <span className="text-xs text-[#2ECC71]">
+                AST: {event.assist_player_name}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -425,13 +437,17 @@ function GameHeader({
               : "bg-[#2D2A2A] text-[#FFFFFF80]"
           }`}
         >
-          {isLive
-            ? `LIVE • Q${game.current_period} • ${formatClock(game.clock_sec_remaining)}`
-            : "FT"}
+          {isLive ? `LIVE` : "FT"}
         </div>
 
-        <div className="text-xs text-[#FFFFFF80]">
-          Round {game.round_number}
+        <div className="text-xs bg-[#2D2A2A] text-[#FFFFFF80] rounded-full px-3 py-1">
+          {`Round ${game.round_number} • ${new Date(
+            Number(game.game_date_epoch),
+          ).toLocaleDateString("he-IL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}`}
         </div>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
