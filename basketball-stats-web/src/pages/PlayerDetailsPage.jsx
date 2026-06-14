@@ -114,6 +114,17 @@ function MainStat({ label, value }) {
   );
 }
 
+function SheetStatRow({ label, value }) {
+  return (
+    <div className="flex flex-row justify-between">
+      <div className="text-sm text-white">{label}</div>
+      <div className="text-sm text-white">
+        {Number(value ?? 0)}
+      </div>
+    </div>
+  );
+}
+
 function MiniStat({ label, value }) {
   return (
     <div className="rounded-xl bg-[#2D2A2A] p-2">
@@ -130,10 +141,10 @@ function GameStatsBottomSheet({ game, onClose }) {
   const ftAttempts = Number(game.ft_made) + Number(game.ft_miss);
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/60">
+    <div className="fixed right-10 inset-0 z-100 bg-black/60">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} />
 
-      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-[#1F1D1D] p-5">
+      <div className="absolute top-0 right-0 z-101 h-full w-96 overflow-y-auto rounded-l-3xl bg-[#1F1D1D] p-5">
         <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-[#FFFFFF40]" />
 
         <div className="mb-5 flex items-center justify-between">
@@ -151,53 +162,31 @@ function GameStatsBottomSheet({ game, onClose }) {
             Close
           </button>
         </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <MainStat label="PTS" value={game.points} />
-          <MainStat label="REB" value={game.rebounds} />
-          <MainStat label="AST" value={game.assists} />
-          <MainStat label="STL" value={game.steals} />
-          <MainStat label="BLK" value={game.blocks} />
-          <MainStat label="TOV" value={game.turnovers} />
-        </div>
-
         <div className="mt-5 rounded-2xl bg-[#2D2A2A] p-4">
-          <h3 className="mb-3 font-bold">Shooting</h3>
-
           <div className="space-y-3 text-sm">
-            <ShotRow label="2PT" made={game.two_made} attempts={twoAttempts} />
+            <ShotChart shots={game.shots ?? []} filter={shotFilter} />
+            <SheetStatRow label="Points" value={game.points} />
+            <ShotRow label="Free throws" made={game.ft_made} attempts={ftAttempts} />
+            <ShotRow label="2 pointers" made={game.two_made} attempts={twoAttempts} />
             <ShotRow
-              label="3PT"
+              label="3 pointers"
               made={game.three_made}
               attempts={threeAttempts}
             />
-            <ShotRow label="FT" made={game.ft_made} attempts={ftAttempts} />
-          </div>
-          <div className="mt-5 rounded-2xl bg-[#2D2A2A] p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-bold">Shot Map</h3>
-              <div className="flex items-center gap-2">
-                <FilterButton
-                  label="All"
-                  active={shotFilter === "all"}
-                  onClick={() => setShotFilter("all")}
-                />
-
-                <FilterButton
-                  label="Makes"
-                  active={shotFilter === "makes"}
-                  onClick={() => setShotFilter("makes")}
-                />
-
-                <FilterButton
-                  label="Misses"
-                  active={shotFilter === "misses"}
-                  onClick={() => setShotFilter("misses")}
-                />
-              </div>
-            </div>
-
-            <ShotChart shots={game.shots ?? []} filter={shotFilter} />
+            <ShotRow
+              label="Field goals"
+              made={Number(game.three_made) + Number(game.two_made)}
+              attempts={threeAttempts + twoAttempts}
+            />
+            <div className="w-full h-px bg-[#ffffff32]" />
+            <SheetStatRow label="Rebounds" value={game.rebounds} />
+            <SheetStatRow label="Defensive Rebounds" value={game.defensive_rebounds} />
+            <SheetStatRow label="Offensive Rebounds" value={game.offensive_rebounds} />
+            <div className="w-full h-px bg-[#ffffff32]" />
+            <SheetStatRow label="Assists" value={game.assists} />
+            <SheetStatRow label="Turnovers" value={game.turnovers} />
+            <SheetStatRow label="Steals" value={game.steals} />
+            <SheetStatRow label="Blocks" value={game.blocks} />
           </div>
         </div>
       </div>
@@ -207,14 +196,14 @@ function GameStatsBottomSheet({ game, onClose }) {
 
 function ShotRow({ label, made, attempts }) {
   const percentage =
-    attempts === 0 ? 0 : ((Number(made) / attempts) * 100).toFixed(1);
+    attempts === 0 ? 0 : ((Number(made) / attempts) * 100).toFixed(0);
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[#FFFFFF80]">{label}</span>
+      <span className="text-white">{label}</span>
 
       <span className="font-semibold text-white">
-        {made}/{attempts} · {percentage}%
+        {made}/{attempts} ({percentage}%)
       </span>
     </div>
   );
@@ -250,16 +239,21 @@ function ShotChart({ shots, filter }) {
         return (
           <div
             key={index}
-            className={`absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border ${
-              isMade
-                ? "bg-[#2ECC71] border-white"
-                : "bg-red-400 border-white"
-            }`}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
             style={{
               left: `${(x / 15) * 100}%`,
               top: `${(y / 14) * 100}%`,
             }}
-          />
+          >
+            {isMade ? (
+              <div className="h-3 w-3 rounded-full border-[3px] border-[#4CAF50]" />
+            ) : (
+              <div className="relative h-3 w-3">
+                <div className="absolute left-1/2 top-1/2 h-3 w-[3px] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-red-600" />
+                <div className="absolute left-1/2 top-1/2 h-3 w-[3px] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-red-600" />
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
