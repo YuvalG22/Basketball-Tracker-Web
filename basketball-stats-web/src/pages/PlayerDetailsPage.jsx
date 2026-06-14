@@ -237,7 +237,7 @@ function ShotChart({ shots, filter }) {
   return (
     <div className="relative mx-auto aspect-[15/14] w-full max-w-[320px] overflow-hidden bg-[#1F1D1D] border border-[#FFFFFF20]">
       <img
-        src="/court.svg"
+        src="/court_full.svg"
         alt="Basketball court"
         className="absolute inset-0 h-full w-full object-fill"
       />
