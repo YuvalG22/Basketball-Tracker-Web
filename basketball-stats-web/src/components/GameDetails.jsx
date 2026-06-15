@@ -206,7 +206,7 @@ function BoxScoreSection({
 
                       <div className="min-w-0">
                         <div
-                          className={`truncate text-xs font-bold ${
+                          className={`truncate text-sm font-bold ${
                             isOnCourt ? "text-white" : "text-white/60"
                           }`}
                         >
@@ -222,25 +222,23 @@ function BoxScoreSection({
                     </div>
                   </td>
 
-                  <td className="px-2 py-3 text-center font-bold text-[#2ECC71]">
-                    {player.points}
-                  </td>
+                  <td className="px-2 py-3 text-center text-sm">{player.points}</td>
 
-                  <td className="px-2 py-3 text-center">{player.rebounds}</td>
-                  <td className="px-2 py-3 text-center">{player.assists}</td>
-                  <td className="px-2 py-3 text-center">{player.steals}</td>
-                  <td className="px-2 py-3 text-center">{player.blocks}</td>
-                  <td className="px-2 py-3 text-center">{player.turnovers}</td>
+                  <td className="px-2 py-3 text-center text-sm">{player.rebounds}</td>
+                  <td className="px-2 py-3 text-center text-sm">{player.assists}</td>
+                  <td className="px-2 py-3 text-center text-sm">{player.steals}</td>
+                  <td className="px-2 py-3 text-center text-sm">{player.blocks}</td>
+                  <td className="px-2 py-3 text-center text-sm">{player.turnovers}</td>
 
-                  <td className="px-2 py-3 text-center">
+                  <td className="px-2 py-3 text-center text-sm">
                     {player.two_made}/{twoAttempts}
                   </td>
 
-                  <td className="px-2 py-3 text-center">
+                  <td className="px-2 py-3 text-center text-sm">
                     {player.three_made}/{threeAttempts}
                   </td>
 
-                  <td className="px-2 py-3 text-center">
+                  <td className="px-2 py-3 text-center text-sm">
                     {player.ft_made}/{ftAttempts}
                   </td>
                 </tr>

@@ -141,7 +141,7 @@ function GameStatsBottomSheet({ game, onClose }) {
   const ftAttempts = Number(game.ft_made) + Number(game.ft_miss);
 
   return (
-    <div className="fixed right-10 inset-0 z-100 bg-black/60">
+    <div className="fixed inset-0 z-100 bg-black/60">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} />
 
       <div className="absolute top-0 right-0 z-101 h-full w-96 overflow-y-auto rounded-l-3xl bg-[#1F1D1D] p-5">
