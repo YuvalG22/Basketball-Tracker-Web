@@ -50,7 +50,7 @@ export default function HomePage() {
         to={gameLink}
         className="block rounded-[20px] border border-line bg-surface p-5 transition active:scale-[0.98]"
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
           <div
             className="inline-flex items-center gap-2 rounded-full bg-raised px-3 py-1 text-xs font-bold text-muted"
           >
@@ -87,9 +87,9 @@ export default function HomePage() {
 function TeamScoreRow({ name, score, isWinner }) {
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex min-w-0 items-center justify-between gap-3">
       <div
-        className={`text-lg ${
+        className={`min-w-0 break-words text-lg ${
           isWinner ? "font-bold text-ink" : "font-medium text-muted"
         }`}
       >
@@ -97,7 +97,7 @@ function TeamScoreRow({ name, score, isWinner }) {
       </div>
 
       <div
-        className={`text-4xl ${
+        className={`shrink-0 text-4xl ${
           isWinner ? "font-black text-ink" : "font-semibold text-muted"
         }`}
       >

@@ -1,3 +1,5 @@
+import PlayerAvatar from "../components/PlayerAvatar";
+import Dialog from "../components/Dialog";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -28,7 +30,7 @@ export default function PlayerDetailsPage() {
       <div>
         <h2 className="mb-3 text-xl font-bold">Games</h2>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {games.map((game) => (
             <button
               key={game.game_id}
@@ -78,12 +80,10 @@ function PlayerHeader({ player, averages, gamesCount }) {
   return (
     <div className="rounded-[20px] bg-surface p-5">
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-raised text-2xl font-bold text-accent">
-          {player.number}
-        </div>
+        <PlayerAvatar player={player} className="h-16 w-16" />
 
-        <div>
-          <h1 className="text-3xl font-bold">{player.name}</h1>
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-bold sm:text-3xl">{player.name}</h1>
           <p className="text-sm text-muted">{gamesCount} games played</p>
         </div>
       </div>
@@ -141,10 +141,9 @@ function GameStatsBottomSheet({ game, onClose }) {
   const ftAttempts = Number(game.ft_made ?? 0) + Number(game.ft_miss ?? 0);
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/60">
-      <button className="absolute inset-0 h-full w-full" onClick={onClose} />
+    <Dialog onClose={onClose} title={"vs " + game.opponent_name} drawer>
 
-      <div className="absolute top-0 right-0 z-101 h-full w-full max-w-96 overflow-y-auto rounded-l-[20px] bg-surface p-5">
+      <div className="bg-surface p-5">
         <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-line" />
 
         <div className="mb-5 flex items-center justify-between">
@@ -195,7 +194,7 @@ function GameStatsBottomSheet({ game, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

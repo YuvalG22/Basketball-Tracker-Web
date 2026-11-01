@@ -18,7 +18,7 @@ export default function GameDetailsPage() {
   if (data?.game?.status !== "FINISHED") return <p>Completed game not found</p>;
 
   return (
-    <GameStatsView
+    <GameStatsView key={gameId}
       game={data.game}
       players={data.players ?? []}
       events={data.events ?? []}

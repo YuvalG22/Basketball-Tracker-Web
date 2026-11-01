@@ -72,8 +72,8 @@ test("momentum includes opponent scoring events from the actual API contract", (
   ];
   const copy = [...events];
   const points = buildMomentumPoints(events, "600");
-  assert.deepEqual(points.map(point => point.scoreDiff), [0, 3, 1, -2, -3]);
-  assert.deepEqual(points.map(point => point.gameSecond), [0, 100, 200, 600, 650]);
+  assert.deepEqual(points.map(point => point.scoreDiff), [0, 3, 1, -2, -3, 0]);
+  assert.deepEqual(points.map(point => point.gameSecond), [0, 100, 200, 600, 650, 700]);
   assert.deepEqual(events, copy);
 });
 

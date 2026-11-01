@@ -2,11 +2,17 @@ import { useState } from "react";
 import {
   Area,
   YAxis,
+  XAxis,
+  Tooltip,
   ResponsiveContainer,
   ReferenceLine,
   AreaChart,
 } from "recharts";
-import { getPeriodScores, buildMomentumPoints } from "../utils/gameStats";
+import TeamLogo from "./TeamLogo";
+import PlayerAvatar from "./PlayerAvatar";
+import PlayByPlay from "./PlayByPlay";
+import MomentumTooltip from "./MomentumTooltip";
+import { getPeriodScores, buildMomentumPoints, momentumAxisClock } from "../utils/gameStats";
 
 export default function GameStatsView({
   game,
@@ -28,23 +34,16 @@ export default function GameStatsView({
 
 
   return (
-    <section className="flex flex-col gap-5 md:flex-row">
-      <div className="flex min-w-0 flex-col md:w-1/3 gap-5">
-        <GameHeader
-          game={game}
-          homeTeamName={homeTeamName}
-          awayTeamName={awayTeamName}
-          homeScore={homeScore}
-          awayScore={awayScore}
-          periodScores={periodScores}
-          momentumPoints={momentumPoints}
-        />
-        <PlayByPlaySection events={events} opponentName={game.opponent_name} />
-      </div>
-      <div className="min-w-0 md:w-2/3">
-        <BoxScoreSection
-          players={players}
-        />
+    <section className="space-y-5">
+      <GameHeader game={game} homeTeamName={homeTeamName} awayTeamName={awayTeamName}
+        homeScore={homeScore} awayScore={awayScore} periodScores={periodScores} momentumPoints={momentumPoints} />
+      <div className="game-panels">
+        <div className="game-panel" role="region" aria-label="Box Score">
+          <BoxScoreSection players={players} />
+        </div>
+        <div className="game-panel" role="region" aria-label="Play by Play timeline">
+          <PlayByPlay events={events} game={game} players={players} />
+        </div>
       </div>
     </section>
   );
@@ -78,7 +77,7 @@ function BoxScoreSection({ players }) {
           {players.length} players
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="Player box score, scroll for more statistics" tabIndex={0}>
         <table className="w-full min-w-155 border-collapse text-xs">
           <thead>
             <tr className="border-b border-line text-muted">
@@ -170,11 +169,7 @@ function BoxScoreSection({ players }) {
                 >
                   <td className="sticky left-0 bg-surface px-2 py-3">
                     <div className="flex w-36 items-center gap-2">
-                      <div
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-raised text-[10px] font-bold text-accent"
-                      >
-                        {player.player_number}
-                      </div>
+                      <PlayerAvatar player={player} className="h-9 w-9" />
 
                       <div className="min-w-0">
                         <div
@@ -182,6 +177,7 @@ function BoxScoreSection({ players }) {
                         >
                           {player.player_name}
                         </div>
+                        <span className="text-xs text-muted">#{player.player_number ?? "-"}</span>
 
                       </div>
                     </div>
@@ -220,7 +216,7 @@ function SortableTh({ label, field, sortKey, sortDirection, onSort }) {
   const active = sortKey === field;
 
   return (
-    <th className="px-2 py-3 text-center">
+    <th aria-sort={active ? (sortDirection === "desc" ? "descending" : "ascending") : "none"} className="px-2 py-3 text-center">
       <button
         type="button"
         onClick={() => onSort(field)}
@@ -234,117 +230,6 @@ function SortableTh({ label, field, sortKey, sortDirection, onSort }) {
         </span>
       </button>
     </th>
-  );
-}
-
-function PlayByPlaySection({ events, opponentName }) {
-  return (
-    <div className="min-w-0">
-      <div className="rounded-[20px] bg-surface p-4 xl:max-h-155 xl:overflow-y-auto">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Play by Play</h2>
-        </div>
-        <div className="space-y-4">
-          {events.map((event) => {
-            if (event.type === "PERIOD_START") {
-              return (
-                <QuarterSeparator
-                  key={event.id}
-                  period={event.period}
-                  isStart
-                />
-              );
-            }
-
-            if (event.type === "PERIOD_END") {
-              return (
-                <QuarterSeparator
-                  key={event.id}
-                  period={event.period}
-                  isStart={false}
-                />
-              );
-            }
-
-            return (
-              <PlayByPlayRow
-                key={event.id}
-                event={event}
-                opponentName={opponentName}
-              />
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuarterSeparator({ period, isStart }) {
-  return (
-    <div className="my-4 flex items-center gap-3">
-      <div className="h-px flex-1 bg-raised" />
-
-      <div
-        className={`rounded-full px-4 py-1 text-xs font-bold ${
-          isStart
-            ? "bg-accent/10 text-accent"
-            : "bg-raised text-muted"
-        }`}
-      >
-        {isStart ? `START Q${period}` : `END Q${period}`}
-      </div>
-
-      <div className="h-px flex-1 bg-raised" />
-    </div>
-  );
-}
-
-function PlayByPlayRow({ event, opponentName }) {
-  const isOpponent = event.type.startsWith("OPP");
-
-  return (
-    <div
-      className={`flex items-center ${
-        isOpponent ? "justify-start" : "justify-end"
-      }`}
-    >
-      <div
-        className={`flex items-center gap-3 ${
-          isOpponent ? "flex-row" : "flex-row-reverse"
-        }`}
-      >
-        <div className="text-xs font-bold text-ink">
-          {formatClock(event.clock_sec_remaining)}
-        </div>
-
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-raised text-sm font-bold text-accent">
-          {getPointsFromEvent(event.type)}
-        </div>
-
-        <div
-          className={`flex items-center gap-2 ${
-            isOpponent ? "flex-row" : "flex-row-reverse"
-          }`}
-        >
-          <span className="text-[18px] font-bold text-ink">
-            {event.team_score_at_event} - {event.opponent_score_at_event}
-          </span>
-
-          <div className={`flex flex-row items-center gap-2`}>
-            <span className="text-sm text-ink">
-              {event.player_name ?? opponentName}
-            </span>
-
-            {event.assist_player_name && (
-              <span className="text-xs text-muted">
-                Assist: {event.assist_player_name}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -365,7 +250,7 @@ function GameHeader({
 
   return (
     <div className="rounded-[20px] bg-surface p-4">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <div
           className="rounded-full bg-raised px-3 py-1 text-xs font-bold text-muted"
         >
@@ -382,18 +267,18 @@ function GameHeader({
           })}`}
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
         <HeaderTeam name={homeTeamName} align="left" />
 
         <div className="text-center">
           <div
-            className="text-3xl font-black tracking-tight text-ink md:text-4xl"
+            className="whitespace-nowrap text-2xl font-black tracking-tight text-ink sm:text-4xl"
           >
             {homeScore} - {awayScore}
           </div>
 
           <div
-            className="mt-2 text-xl font-bold text-muted"
+            className="mt-2 text-sm font-bold text-muted"
           >
             FINAL
           </div>
@@ -403,7 +288,7 @@ function GameHeader({
       </div>
       {canShowMomentum && (
         <div className="mt-4">
-          <MomentumAreaChart momentumPoints={momentumPoints} />
+          <MomentumAreaChart momentumPoints={momentumPoints} opponentName={game.opponent_name} periodLength={game.quarter_length_sec} regulationPeriods={regulationPeriods} />
         </div>
       )}
       <div className="mt-6 overflow-x-auto rounded-2xl bg-raised p-3">
@@ -463,46 +348,24 @@ function GameHeader({
   );
 }
 
-function formatClock(seconds) {
-  const total = Number(seconds ?? 0);
-  const min = Math.floor(total / 60);
-  const sec = total % 60;
-
-  return `${min}:${sec.toString().padStart(2, "0")}`;
-}
-
-function getPointsFromEvent(type) {
-  switch (type) {
-    case "TWO_MADE":
-    case "OPP_TWO_MADE":
-      return 2;
-
-    case "THREE_MADE":
-    case "OPP_THREE_MADE":
-      return 3;
-
-    case "FT_MADE":
-    case "OPP_FT_MADE":
-      return 1;
-
-    default:
-      return "";
-  }
-}
-
-function MomentumAreaChart({ momentumPoints }) {
+function MomentumAreaChart({ momentumPoints, opponentName, periodLength = 600, regulationPeriods = 4 }) {
   const data = momentumPoints.map((p) => ({
     ...p,
     positiveDiff: p.scoreDiff > 0 ? p.scoreDiff : 0,
     negativeDiff: p.scoreDiff < 0 ? p.scoreDiff : 0,
   }));
 
-  const maxAbs = Math.max(...data.map((d) => Math.abs(d.scoreDiff)));
+  const maxAbs = Math.max(1, ...data.map((d) => Math.abs(d.scoreDiff)));
 
   return (
-    <div className="h-30 w-full rounded-2xl bg-raised">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height: 120 }}>
+    <div className="w-full rounded-2xl bg-raised p-3">
+      <p className="mb-2 text-xs text-muted">Lead from recorded scoring events</p>
+      <div className="mb-2 flex flex-wrap justify-between gap-2 text-xs font-semibold"><span className="text-accent">Afeka lead</span><span className="text-orange">{opponentName} lead</span></div>
+      <div className="h-44" role="img" aria-label="Scoring momentum: Afeka score minus opponent score by period and game clock">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 320, height: 176 }}>
         <AreaChart data={data}>
+          <XAxis dataKey="gameSecond" type="number" domain={[0, "dataMax"]} tickFormatter={value => momentumAxisClock(value, periodLength, regulationPeriods, Math.max(...data.map(point => point.period)))} tick={{ fontSize: 10 }} minTickGap={32} />
+          <Tooltip content={<MomentumTooltip opponentName={opponentName} regulationPeriods={regulationPeriods} />} />
           <YAxis
             width={24}
             domain={[-maxAbs, maxAbs]}
@@ -514,7 +377,8 @@ function MomentumAreaChart({ momentumPoints }) {
           />
           <ReferenceLine y={0} stroke="var(--color-muted)" />
           <Area
-            type="monotone"
+            type="stepAfter"
+            isAnimationActive={false}
             dataKey="positiveDiff"
             stroke="var(--color-accent)"
             fill="var(--color-accent)"
@@ -525,7 +389,8 @@ function MomentumAreaChart({ momentumPoints }) {
           />
 
           <Area
-            type="monotone"
+            type="stepAfter"
+            isAnimationActive={false}
             dataKey="negativeDiff"
             stroke="var(--color-orange)"
             fill="var(--color-orange)"
@@ -536,6 +401,7 @@ function MomentumAreaChart({ momentumPoints }) {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -547,11 +413,9 @@ function HeaderTeam({ name, align }) {
         align === "right" ? "justify-self-end" : "justify-self-start"
       }`}
     >
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-raised text-4xl shadow-lg">
-        🏀
-      </div>
+      <TeamLogo name={name} className="h-14 w-20 sm:h-20 sm:w-32" />
 
-      <div className="mt-3 max-w-[120px] text-center text-lg font-black text-ink">
+      <div className="mt-3 max-w-full break-words text-center text-sm sm:text-lg font-black text-ink">
         {name}
       </div>
     </div>

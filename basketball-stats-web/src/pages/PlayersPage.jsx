@@ -1,3 +1,4 @@
+import PlayerAvatar from "../components/PlayerAvatar";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getPlayers } from "../api/playersApi";
@@ -20,21 +21,19 @@ export default function PlayersPage() {
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.map((player) => (
           <Link
             key={player.id}
             to={`/players/${player.id}`}
             className="block rounded-[20px] bg-surface p-4 active:scale-[0.98]"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-raised text-xl font-bold text-accent">
-                  {player.number}
-                </div>
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+        <PlayerAvatar player={player} className="h-14 w-14" />
 
-                <div>
-                  <h2 className="text-lg font-bold text-ink">
+                <div className="min-w-0">
+                  <h2 className="break-words text-lg font-bold text-ink">
                     {player.name}
                   </h2>
 
@@ -42,7 +41,7 @@ export default function PlayersPage() {
                 </div>
               </div>
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-raised text-lg text-muted">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-raised text-lg text-muted">
                 ›
               </div>
             </div>

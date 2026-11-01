@@ -1,3 +1,5 @@
+import PlayerAvatar from "../components/PlayerAvatar";
+import Dialog from "../components/Dialog";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSeasonStats } from "../api/seasonStatsApi";
@@ -134,7 +136,7 @@ export default function SeasonStatsPage() {
         <h1 className="text-3xl font-bold">Season Stats</h1>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {statCards.map((stat) => (
           <SeasonStatCard
             key={stat.key ?? stat.label}
@@ -187,10 +189,10 @@ function SeasonStatCard({ stat, players, onSeeAll }) {
       </div>
 
       <div className="space-y-3">
-        {topPlayers.map((player, index) => (
+        {topPlayers.map((player) => (
           <PlayerStatRow
             key={player.player_id}
-            rank={index + 1}
+
             player={player}
             stat={stat}
           />
@@ -200,21 +202,19 @@ function SeasonStatCard({ stat, players, onSeeAll }) {
   );
 }
 
-function PlayerStatRow({ rank, player, stat }) {
+function PlayerStatRow({ player, stat }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-raised p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-sm font-bold text-accent">
-          {rank}
-        </div>
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-raised p-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <PlayerAvatar player={player} className="h-10 w-10" />
 
-        <div>
-          <div className="font-semibold">{player.player_name}</div>
+        <div className="min-w-0">
+          <div className="break-words font-semibold">{player.player_name}</div>
           <div className="text-[10px] text-muted">GAMES {player.gp}</div>
         </div>
       </div>
 
-      <div className="text-left">
+      <div className="shrink-0 text-left">
         <div className="text-xl font-bold text-accent">
           {stat.customValue
             ? stat.customValue(player)
@@ -229,10 +229,9 @@ function PlayerStatRow({ rank, player, stat }) {
 
 function StatsBottomSheet({ stat, players, onClose }) {
   return (
-    <div className="fixed inset-0 z-100 bg-black/60">
-      <button className="absolute inset-0 h-full w-full" onClick={onClose} />
+    <Dialog onClose={onClose} title={stat.title}>
 
-      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[80vh] rounded-t-[20px] bg-surface p-4">
+      <div className="flex max-h-[85dvh] flex-col bg-surface p-4">
         <div className="mx-auto mb-4 h-1 w-12 rounded-full text-muted" />
 
         <div className="mb-4 flex items-center justify-between">
@@ -249,17 +248,17 @@ function StatsBottomSheet({ stat, players, onClose }) {
           </button>
         </div>
 
-        <div className="max-h-[62vh] space-y-3 overflow-y-auto pb-4">
-          {players.map((player, index) => (
+        <div className="min-h-0 space-y-3 overflow-y-auto pb-4">
+          {players.map((player) => (
             <PlayerStatRow
               key={player.player_id}
-              rank={index + 1}
+
               player={player}
               stat={stat}
             />
           ))}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

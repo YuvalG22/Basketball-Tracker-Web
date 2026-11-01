@@ -38,20 +38,34 @@ export function getPeriodScores(events, isHomeGame, quartersCount = 4) {
 
 export function buildMomentumPoints(events, quarterLengthSec = 600) {
   const length = Number(quarterLengthSec) || 600;
+  let teamScore = 0;
+  let opponentScore = 0;
   const points = events
-    .filter((event) => scoringPoints[event.type] &&
-      event.team_score_at_event != null && event.opponent_score_at_event != null)
+    .filter(event => scoringPoints[event.type])
     .sort((a, b) => Number(a.period) - Number(b.period) ||
-      Number(b.clock_sec_remaining) - Number(a.clock_sec_remaining) ||
-      new Date(a.created_at) - new Date(b.created_at))
-    .map((event) => {
-      const gameSecond = (Number(event.period) - 1) * length +
-        length - Number(event.clock_sec_remaining);
-      return {
-        gameSecond,
-        minute: +(gameSecond / 60).toFixed(1),
-        scoreDiff: Number(event.team_score_at_event) - Number(event.opponent_score_at_event),
-      };
+      Number(b.clock_sec_remaining) - Number(a.clock_sec_remaining))
+    .map(event => {
+      const value = scoringPoints[event.type];
+      if (event.type.startsWith("OPP_")) opponentScore += value;
+      else teamScore += value;
+      const period = Number(event.period);
+      const clockSecRemaining = Math.max(0, Math.min(length, Number(event.clock_sec_remaining) || 0));
+      const gameSecond = (period - 1) * length + length - clockSecRemaining;
+      return { gameSecond, period, clockSecRemaining, minute: +(gameSecond / 60).toFixed(1), teamScore, opponentScore,
+        scoreDiff: teamScore - opponentScore };
     });
-  return [{ gameSecond: 0, minute: 0, scoreDiff: 0 }, ...points];
+  return [{ gameSecond: 0, period: 1, clockSecRemaining: length, minute: 0, teamScore: 0, opponentScore: 0, scoreDiff: 0 }, ...points];
+}
+
+export function gameClockLabel(period, secondsRemaining, regulationPeriods = 4) {
+  const seconds = Math.max(0, Math.floor(Number(secondsRemaining) || 0));
+  const label = period <= regulationPeriods ? `Q${period}` : `OT${period - regulationPeriods}`;
+  return `${label} ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export function momentumAxisClock(elapsed, periodLength = 600, regulationPeriods = 4, lastPeriod = 4) {
+  const length = Number(periodLength) || 600;
+  const seconds = Math.max(0, Math.floor(Number(elapsed) || 0));
+  const period = Math.min(lastPeriod, Math.floor(seconds / length) + 1);
+  return gameClockLabel(period, length - (seconds - (period - 1) * length), regulationPeriods);
 }

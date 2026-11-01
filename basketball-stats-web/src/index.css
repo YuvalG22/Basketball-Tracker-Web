@@ -70,3 +70,40 @@ button:not(:disabled), a {
   outline: 2px solid var(--color-accent);
   outline-offset: 4px;
 }
+
+@layer base {
+  button { min-height: 44px; }
+}
+
+.game-panels, .game-panel { min-width: 0; }
+/* Center the compact timeline and align each team's action toward its score. */
+.play-list { max-width: 800px; margin-inline: auto; padding-inline: 8px; }
+.play-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 15px; }
+.play-score-column { width: 104px; }
+.play-table th { padding: 14px 12px; text-align: right; font-size: 14px; color: var(--color-muted); border-bottom: 1px solid var(--color-line); overflow-wrap: anywhere; }
+.play-table td { padding: 14px 12px; vertical-align: top; border-bottom: 1px solid var(--color-line); overflow-wrap: anywhere; }
+.play-table tbody tr:last-child td { border-bottom: 0; }
+.play-table .play-clock { display: block; margin-top: 5px; color: var(--color-muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.play-table .play-score { text-align: center; white-space: nowrap; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.play-table .play-home { text-align: right; }
+.play-table .play-away, .play-table .play-away-heading { text-align: left; }
+.play-assist { display: block; min-height: 20px; margin-top: 5px; color: var(--color-muted); font-size: 14px; }
+.play-period td { background: var(--color-background); text-align: center; font-size: 13px; font-weight: 600; color: var(--color-muted); }
+@media (max-width: 479px) {
+  .play-table { font-size: 14px; }
+  .play-score-column { width: 84px; }
+  .play-table th, .play-table td { padding: 12px 5px; }
+  .play-assist, .play-table .play-clock { font-size: 12px; }
+  .play-table .play-score { font-size: 15px; }
+}
+.game-panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.stats-dialog { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; border: 0; width: 100%; max-width: 640px; max-height: 90dvh; border-radius: 20px 20px 0 0; color: var(--color-ink); background: var(--color-surface); }
+.stats-dialog::backdrop { background: rgb(0 0 0 / 60%); }
+.dialog-content { padding-bottom: env(safe-area-inset-bottom); }
+.stats-dialog { overflow-y: auto; overscroll-behavior: contain; }
+.stats-dialog h2, .break-words { overflow-wrap: anywhere; }
+
+@media (min-width: 1024px) {
+  .stats-dialog { inset: 0; margin: auto; border-radius: 20px; }
+  .stats-drawer { inset: 0 0 0 auto; margin: 0; max-width: 420px; height: 100dvh; max-height: 100dvh; border-radius: 20px 0 0 20px; }
+}

@@ -25,7 +25,7 @@ const items = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-line bg-surface/95 backdrop-blur-xl">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <div className="mx-auto grid max-w-5xl grid-cols-4 px-2 py-2">
         {items.map((item) => (
           <NavLink

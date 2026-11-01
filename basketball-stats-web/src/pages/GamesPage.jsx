@@ -21,7 +21,7 @@ export default function GamesPage() {
       <h1 className="mb-4 text-2xl font-bold">Games</h1>
       {data.length === 0 && <p className="text-muted">No completed games yet</p>}
 
-      <div className="space-y-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.map((game) => (
           <Link
             key={game.id}
@@ -29,9 +29,9 @@ export default function GamesPage() {
             className="block rounded-2xl bg-surface"
           >
             <div key={game.id} className="w-full rounded-2xl bg-surface p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col text-center text-sm text-muted">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-col text-center text-sm text-muted">
                     <div>Round {game.round_number}</div>
                     <div>
                       {new Date(
@@ -46,7 +46,7 @@ export default function GamesPage() {
 
                   <div className="h-12 w-px bg-line" />
 
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2 break-words">
                     <div className="flex items-center gap-3">
                       <span
                         className={`${
@@ -79,7 +79,7 @@ export default function GamesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex shrink-0 items-center gap-3">
                   <div className="space-y-2 text-right">
                     <div
                       className={`text-xl ${
@@ -113,7 +113,7 @@ export default function GamesPage() {
                   </div>
 
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
                       game.team_score > game.opponent_score
                         ? "bg-success"
                         : game.team_score < game.opponent_score ? "bg-danger" : "bg-muted"
