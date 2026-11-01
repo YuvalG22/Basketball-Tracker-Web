@@ -172,7 +172,7 @@ function SeasonStatCard({ stat, players, onSeeAll }) {
     .slice(0, 3);
 
   return (
-    <div className="rounded-3xl bg-[#1F1D1D] p-4">
+    <div className="rounded-[20px] bg-surface p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold">{stat.title}</h2>
@@ -180,7 +180,7 @@ function SeasonStatCard({ stat, players, onSeeAll }) {
 
         <button
           onClick={onSeeAll}
-          className="rounded-full bg-[#1F1D1D] px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-full bg-surface px-4 py-2 text-sm font-semibold text-ink"
         >
           See all
         </button>
@@ -202,26 +202,26 @@ function SeasonStatCard({ stat, players, onSeeAll }) {
 
 function PlayerStatRow({ rank, player, stat }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-[#2D2A2A] p-3">
+    <div className="flex items-center justify-between rounded-2xl bg-raised p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F1D1D] text-sm font-bold text-[#2ECC71]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-sm font-bold text-accent">
           {rank}
         </div>
 
         <div>
           <div className="font-semibold">{player.player_name}</div>
-          <div className="text-[10px] text-[#FFFFFF80]">GAMES {player.gp}</div>
+          <div className="text-[10px] text-muted">GAMES {player.gp}</div>
         </div>
       </div>
 
       <div className="text-left">
-        <div className="text-xl font-bold text-[#2ECC71]">
+        <div className="text-xl font-bold text-accent">
           {stat.customValue
             ? stat.customValue(player)
             : getAverage(player, stat.key)}
         </div>
 
-        <div className="text-xs text-end text-[#FFFFFF80]">{stat.label}</div>
+        <div className="text-xs text-end text-muted">{stat.label}</div>
       </div>
     </div>
   );
@@ -232,18 +232,18 @@ function StatsBottomSheet({ stat, players, onClose }) {
     <div className="fixed inset-0 z-100 bg-black/60">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} />
 
-      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[80vh] rounded-t-3xl bg-[#1F1D1D] p-4">
-        <div className="mx-auto mb-4 h-1 w-12 rounded-full text-[#FFFFFF80]" />
+      <div className="absolute bottom-0 left-0 right-0 z-101 max-h-[80vh] rounded-t-[20px] bg-surface p-4">
+        <div className="mx-auto mb-4 h-1 w-12 rounded-full text-muted" />
 
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">{stat.title}</h2>
-            <p className="text-sm text-[#FFFFFF80]">{stat.label}</p>
+            <p className="text-sm text-muted">{stat.label}</p>
           </div>
 
           <button
             onClick={onClose}
-            className="rounded-full bg-[#1F1D1D] px-4 py-2 text-sm"
+            className="rounded-full bg-surface px-4 py-2 text-sm"
           >
             Close
           </button>
