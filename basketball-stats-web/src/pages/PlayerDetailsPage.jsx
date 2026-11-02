@@ -32,7 +32,7 @@ export default function PlayerDetailsPage() {
       <PlayerHeader player={player} averages={averages} gamesCount={games.length} shots={games.flatMap(game => game.shots ?? [])} />
 
 
-      <PlayerGameLog games={games} playerId={playerId} />
+      <PlayerGameLog games={games} playerId={playerId} player={player} playerName={player.name} />
     </section>;
 }
 function PlayerHeader({

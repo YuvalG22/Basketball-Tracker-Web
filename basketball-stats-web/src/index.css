@@ -160,18 +160,13 @@ select { max-width: 100%; }
   .player-log-table thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .player-log-table tbody tr { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px 8px; padding: 16px 12px; }
   .player-log-table td, .player-log-table th { display: block; padding: 0; min-width: 0; white-space: normal; }
-  .player-log-table .player-log-date { align-self: center; font-size: 12px; }
-  .player-log-table .player-log-opponent { grid-column: span 3; max-width: none; }
+  .player-log-table .player-log-extra, .player-log-table .player-log-date, .player-log-table .player-log-shooting { display: none; }
+  .player-log-table .player-log-opponent { grid-column: span 4; max-width: none; }
+  .player-log-opponent button > span > span { display: none; }
   .player-log-result-cell { grid-column: span 2; align-self: center; text-align: end !important; }
-  .player-log-table td[data-label]::before { display: block; content: attr(data-label); color: var(--color-muted); font-size: 11px; margin-bottom: 4px; }
-  .player-log-table .player-log-shooting { grid-column: span 3; font-size: 13px; }
-}
-@media (max-width: 479px) {
-  .player-log-table .player-log-date { grid-column: span 2; }
-  .player-log-table .player-log-opponent { grid-column: span 4; }
-  .player-log-result-cell { grid-column: span 6; text-align: start !important; }
   .player-log-table td[data-label] { grid-column: span 2; }
-  .player-log-table .player-log-shooting { grid-column: span 3; }
+  .player-log-table td[data-label]::before { display: block; content: attr(data-compact-label); color: var(--color-muted); font-size: 11px; margin-bottom: 4px; }
+  .player-log-result { min-width: 0; padding: 4px 8px; }
 }
 .games-list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; padding: 12px; }
 .games-list-meta { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

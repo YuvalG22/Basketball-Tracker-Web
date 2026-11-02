@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getGames } from "../api/gamesApi";
 import Dialog from "./Dialog";
 import TeamLogo from "./TeamLogo";
+import PlayerAvatar from "./PlayerAvatar";
 
 const countingStats = [
   ["Points", "points"], ["Rebounds", "rebounds"],
@@ -28,7 +29,7 @@ function shootingValue(made, attempts) {
   return `${made}/${attempts} (${attempts ? Math.round(made / attempts * 100) : 0}%)`;
 }
 
-export default function PlayerGameLog({ games, playerId }) {
+export default function PlayerGameLog({ games, playerId, player, playerName }) {
   const { t, teamName, language } = usePreferences();
   const timing = useMinutes();
   const [selectedId, setSelectedId] = useState(null);
@@ -48,11 +49,11 @@ export default function PlayerGameLog({ games, playerId }) {
     {games.length === 0 ? <p className="text-muted">{t("No games played yet.")}</p> : <div className="player-log-container rounded-2xl border border-line bg-surface" role="region" aria-label={t("Game log")} tabIndex={0}>
       <table className="player-log-table">
         <thead><tr>
-          <th scope="col">{t("Date")}</th><th scope="col">{t("Opponent")}</th><th scope="col">{t("Result")}</th>
-          <th scope="col">{t("MIN")}</th>
-          {logStats.map(([label, , full]) => <th key={label} scope="col" title={t(full)}>{t(label)}</th>)}
-          {['FG', '2PT', '3PT', 'FT'].map(label => <th scope="col" key={label}>{t(label)}</th>)}
-          {rows.some(game => game.fouls != null) && <th scope="col">{t("Fouls")}</th>}
+          <th scope="col" className="player-log-extra">{t("Date")}</th><th scope="col">{t("Opponent")}</th><th scope="col">{t("Result")}</th>
+          <th scope="col" className="player-log-extra">{t("MIN")}</th>
+          {logStats.map(([label, , full], index) => <th key={label} scope="col" className={index > 2 ? "player-log-extra" : undefined} title={t(full)}>{t(label)}</th>)}
+          {['FG', '2PT', '3PT', 'FT'].map(label => <th scope="col" className="player-log-extra" key={label}>{t(label)}</th>)}
+          {rows.some(game => game.fouls != null) && <th scope="col" className="player-log-extra">{t("Fouls")}</th>}
         </tr></thead>
         <tbody>{rows.map(game => {
           const date = Number(game.game_date_epoch);
@@ -63,30 +64,31 @@ export default function PlayerGameLog({ games, playerId }) {
           return <tr key={game.game_id} onClick={() => setSelectedId(String(game.game_id))}>
             <td className="player-log-date"><span dir="ltr" title={hasDate ? new Date(date).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-GB') : undefined}>{hasDate ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : '—'}</span><span className="ms-2 text-muted" title={t(game.is_home_game === false ? 'Away game' : game.is_home_game === true ? 'Home game' : 'Round')}>{game.is_home_game === false ? '@' : game.is_home_game === true ? t('vs') : ''}</span></td>
             <th scope="row" className="player-log-opponent"><button type="button" aria-haspopup="dialog" onClick={event => { event.stopPropagation(); setSelectedId(String(game.game_id)); }} aria-label={`${t('vs')} ${teamName(game.opponent_name)}`}><TeamLogo name={game.opponent_name} className="h-8 w-12" /><span>{teamName(game.opponent_name)}{isPlayoffGame(game) && <span className="mt-1 block text-xs font-normal text-muted">{formatGameRound(game, t)}</span>}</span></button></th>
-            <td className="player-log-result-cell">{result ? <span dir="ltr" aria-label={t(result === 'W' ? 'Win' : result === 'L' ? 'Loss' : 'Draw')} className={`player-log-result ${result === 'W' ? 'bg-success' : result === 'L' ? 'bg-danger' : 'bg-muted'}`} title={t('Afeka – opponent')}>{result} {game.team_score}-{game.opponent_score}</span> : <span className="text-muted" title={t(results.isPending ? 'Loading result...' : 'Result unavailable')}>—</span>}</td>
-            <td data-label={t("Minutes")}><span dir="ltr">{formatMinutes(game.seconds)}</span></td>
-            {logStats.map(([, key]) => <td key={key} data-label={t(logStats.find(stat => stat[1] === key)[2])}><span dir="ltr">{count(game[key])}</span></td>)}
+            <td className="player-log-result-cell">{result ? <span dir="ltr" aria-label={t(result === 'W' ? 'Win' : result === 'L' ? 'Loss' : 'Draw')} className={`player-log-result ${result === 'W' ? 'bg-success' : result === 'L' ? 'bg-danger' : 'bg-muted'}`} title={`${teamName('Afeka')} – ${teamName(game.opponent_name)}`}>{result} {game.team_score}-{game.opponent_score}</span> : <span className="text-muted" title={t(results.isPending ? 'Loading result...' : 'Result unavailable')}>—</span>}</td>
+            <td className="player-log-extra" data-label={t("Minutes")}><span dir="ltr">{formatMinutes(game.seconds)}</span></td>
+            {logStats.map(([label, key, full], index) => <td key={key} className={index > 2 ? "player-log-extra" : undefined} data-label={t(full)} data-compact-label={t(label)}><span dir="ltr">{count(game[key])}</span></td>)}
             {shots.map(([label, made, attempts]) => <td className="player-log-shooting" data-label={t(label)} key={label}><span dir="ltr">{shootingValue(made, attempts)}</span></td>)}
-            {rows.some(row => row.fouls != null) && <td data-label={t("Fouls")}><span dir="ltr">{game.fouls == null ? '—' : count(game.fouls)}</span></td>}
+            {rows.some(row => row.fouls != null) && <td className="player-log-extra" data-label={t("Fouls")}><span dir="ltr">{game.fouls == null ? '—' : count(game.fouls)}</span></td>}
           </tr>;
         })}</tbody>
       </table>
     </div>
 }
-    {selectedGame && <PlayerGameDialog key={selectedId} game={selectedGame} loading={results.isPending} onClose={() => setSelectedId(null)} />}
+    {selectedGame && <PlayerGameDialog key={selectedId} game={selectedGame} player={player} playerName={playerName} loading={results.isPending} onClose={() => setSelectedId(null)} />}
   </section>;
 }
 
-function GameHeading({ game, loading = false }) {
+function GameHeading({ game, player, playerName, loading = false }) {
   const { t, teamName, language } = usePreferences();
   const valid = [game.team_score, game.opponent_score].every(value => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)));
   const result = valid ? Number(game.team_score) > Number(game.opponent_score) ? "W" : Number(game.team_score) < Number(game.opponent_score) ? "L" : "D" : null;
   const date = Number(game.game_date_epoch);
   return <div className="flex flex-wrap items-center justify-between gap-3">
     <div className="flex min-w-0 items-center gap-3">
-      <TeamLogo name={game.opponent_name} className="h-12 w-20" />
+      <PlayerAvatar player={player ?? { name: playerName }} className="h-12 w-12" />
       <div className="min-w-0">
-        <div className="break-words font-bold text-ink">{t("vs")} {teamName(game.opponent_name)}</div>
+        <div className="break-words font-bold text-ink">{playerName}</div>
+        <div className="break-words text-sm">{t("vs")} {teamName(game.opponent_name)}</div>
         <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted">
           <span>{formatGameRound(game, t)}</span>
           {Number.isFinite(date) && date > 0 && <span>{new Date(date).toLocaleDateString(language === "he" ? "he-IL" : "en-GB")}</span>}
@@ -97,14 +99,14 @@ function GameHeading({ game, loading = false }) {
     <div className="flex items-center gap-3">
       {valid ? <div className="text-end">
         <div dir="ltr" className="text-lg font-bold tabular-nums">{game.team_score} – {game.opponent_score}</div>
-        <div className="text-xs text-muted">{t("Afeka – opponent")}</div>
+        <div className="text-xs text-muted">{teamName("Afeka")} – {teamName(game.opponent_name)}</div>
       </div> : <span className="text-xs text-muted">{t(loading ? "Loading result..." : "Result unavailable")}</span>}
       {result && <span aria-label={t(result === "W" ? "Win" : result === "L" ? "Loss" : "Draw")} className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${result === "W" ? "bg-success" : result === "L" ? "bg-danger" : "bg-muted"}`}>{result}</span>}
     </div>
   </div>;
 }
 
-export function PlayerGameDialog({ game, loading = false, onClose }) {
+export function PlayerGameDialog({ game, player, playerName, loading = false, onClose }) {
   const { t, teamName } = usePreferences();
   return <Dialog centered title={`${t("vs")} ${teamName(game.opponent_name)}`} onClose={onClose}>
     <div className="p-4 sm:p-6">
@@ -112,8 +114,12 @@ export function PlayerGameDialog({ game, loading = false, onClose }) {
         <h2 className="text-xl font-bold">{t("Game performance")}</h2>
         <button type="button" onClick={onClose} className="shrink-0 rounded-full bg-raised px-4 py-2 text-sm">{t("Close")}</button>
       </div>
-      <GameHeading game={game} loading={loading} />
+      <GameHeading game={game} player={player} playerName={playerName} loading={loading} />
       <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <section className="rounded-2xl bg-raised p-4 md:order-2">
+          <h3 className="mb-3 font-bold">{t("Shot map")}</h3>
+          <ShotMap shots={game.shots ?? []} />
+        </section>
         <div className="space-y-4">
           <section className="rounded-2xl bg-raised p-4">
             <h3 className="mb-3 font-bold">{t("Player statistics")}</h3>
@@ -129,10 +135,6 @@ export function PlayerGameDialog({ game, loading = false, onClose }) {
             </dl>
           </section>
         </div>
-        <section className="rounded-2xl bg-raised p-4">
-          <h3 className="mb-3 font-bold">{t("Shot map")}</h3>
-          <ShotMap shots={game.shots ?? []} />
-        </section>
       </div>
     </div>
   </Dialog>;
