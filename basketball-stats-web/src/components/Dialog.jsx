@@ -1,6 +1,11 @@
 import { useEffect, useRef, useId } from "react";
-
-export default function Dialog({ children, onClose, title, drawer = false }) {
+export default function Dialog({
+  children,
+  onClose,
+  title,
+  drawer = false,
+  centered = false
+}) {
   const ref = useRef(null);
   const titleId = useId();
   useEffect(() => {
@@ -15,14 +20,15 @@ export default function Dialog({ children, onClose, title, drawer = false }) {
       previousFocus?.focus();
     };
   }, []);
-  return (
-    <dialog ref={ref} className={drawer ? "stats-dialog stats-drawer" : "stats-dialog"}
-      aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }}
-      onClick={event => { if (event.target === ref.current) onClose(); }}>
+  return <dialog ref={ref} className={centered ? "stats-dialog stats-card-dialog" : drawer ? "stats-dialog stats-drawer" : "stats-dialog"} aria-labelledby={titleId} onCancel={event => {
+    event.preventDefault();
+    onClose();
+  }} onClick={event => {
+    if (event.target === ref.current) onClose();
+  }}>
       <div className="dialog-content">
         <h2 id={titleId} className="sr-only">{title}</h2>
         {children}
       </div>
-    </dialog>
-  );
+    </dialog>;
 }

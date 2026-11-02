@@ -27,10 +27,11 @@ const player = {
   three_made: "1", three_miss: "1", ft_made: null, ft_miss: null,
 };
 
-async function renderPage(module, route, url, key, data) {
+async function renderPage(module, route, url, key, data, extraQueries = []) {
   const { default: Page } = await vite.ssrLoadModule(module);
   const client = new QueryClient({ defaultOptions: { queries: historicalQueryOptions } });
   client.setQueryData(key, data);
+  for (const [extraKey, extraData] of extraQueries) client.setQueryData(extraKey, extraData);
   try {
     return renderToStaticMarkup(React.createElement(QueryClientProvider, { client },
       React.createElement(MemoryRouter, { initialEntries: [url] },
@@ -151,4 +152,54 @@ test("historical queries do not refresh on focus or reconnect", async () => {
     await new Promise(resolve => setTimeout(resolve, 20));
     assert.equal(calls, 1);
   } finally { unsubscribe(); client.unmount(); client.clear(); }
+});
+
+test("player season shot map aggregates locations across games and handles missing shots", async () => {
+  const html = await renderPage("/src/pages/PlayerDetailsPage.jsx", "/players/:playerId", "/players/player", ["player-details", "player"], {
+    player: { id: "player", name: "Test Player" }, averages: { ppg: 12 },
+    games: [
+      { game_id: "a", opponent_name: "A", shots: [{ type: "TWO_MADE", shot_x: 3, shot_y: 7 }] },
+      { game_id: "b", opponent_name: "B", shots: [{ type: "THREE_MISS", shot_x: 9, shot_y: 7 }] },
+      { game_id: "c", opponent_name: "C" },
+    ],
+  });
+  assert.match(html, /Season averages/);
+  assert.match(html, /Season shot map/);
+  assert.match(html, /left:20%;top:50%/);
+  assert.match(html, /left:60%;top:50%/);
+  assert.match(html, /All shots/);
+  assert.doesNotMatch(html, /No shot locations recorded/);
+});
+
+test("home, games and game details show playoff stage and game number", async () => {
+  const playoff = { ...game, round_number: 0, is_playoff: true, playoff_stage: "SEMI_FINAL", playoff_game_number: 2 };
+  const pages = [
+    ["/src/pages/HomePage.jsx", "/", "/", ["home-game"], { game: playoff }],
+    ["/src/pages/GamesPage.jsx", "/games", "/games", ["games"], [playoff]],
+    ["/src/pages/GameDetailsPage.jsx", "/games/:gameId", "/games/finished", ["game-details", "finished"], { game: playoff, players: [], events: [] }],
+  ];
+  for (const args of pages) {
+    const html = await renderPage(...args);
+    assert.match(html, /Semifinal.*Game 2/);
+    assert.doesNotMatch(html, /Round 0|\{&quot; &quot;\}/);
+  }
+});
+
+test("home overview uses numeric completed results and links to last-game leaders", async () => {
+  const history = [
+    {...game,id:'draw',team_score:'12',opponent_score:'12',game_date_epoch:'100'},
+    {...game,id:'win1',team_score:'12',opponent_score:'9',game_date_epoch:'300'},
+    game,
+    {...game,id:'win2',team_score:'9',opponent_score:'8',game_date_epoch:'200'},
+  ];
+  const detail={game,players:[player,{...player,player_id:'leader',player_name:'Game Leader',points:'20',rebounds:'10',assists:'8'}],events:[],lineupEvents:[]};
+  const html=await renderPage('/src/pages/HomePage.jsx','/','/',['home-game'],{game},[
+    [['games'],history],[['game-details',game.id],detail],
+  ]);
+  for (const text of ['50%','10.5','9.8','Last game leaders','Recent games','Game Leader']) assert.ok(html.includes(text),text);
+  assert.match(html,/href="\/players\/leader"/);
+  assert.match(html,/href="\/games\/finished"/);
+  assert.match(html,/href="\/season"/);
+  assert.ok(html.indexOf('href="/games/win1"')<html.indexOf('href="/games/win2"'));
+  assert.ok(html.indexOf('href="/games/win2"')<html.indexOf('href="/games/draw"'));
 });

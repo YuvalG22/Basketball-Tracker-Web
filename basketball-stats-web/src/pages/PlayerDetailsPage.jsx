@@ -1,278 +1,90 @@
+import PlayerMinutes from "../components/PlayerMinutes";
+import ShotMap from "../components/ShotMap";
+import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
-import Dialog from "../components/Dialog";
-import { useState } from "react";
+import PlayerGameLog from "../components/PlayerGameLog";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getPlayerDetails } from "../api/playersApi";
-
 export default function PlayerDetailsPage() {
-  const { playerId } = useParams();
-  const [selectedGame, setSelectedGame] = useState(null);
-
-  const { data, isLoading, isError, error } = useQuery({
+  const {
+    t
+  } = usePreferences();
+  const {
+    playerId
+  } = useParams();
+  const {
+    data,
+    isLoading,
+    isError
+  } = useQuery({
     queryKey: ["player-details", playerId],
-    queryFn: () => getPlayerDetails(playerId),
+    queryFn: () => getPlayerDetails(playerId)
   });
+  if (isLoading) return <p>{t("Loading...")}</p>;
+  if (isError) return <p>{t("Unable to load data. Please try again.")}{/* error details are not user-facing */}</p>;
+  const {
+    player,
+    averages = {},
+    games = []
+  } = data;
+  return <section className="space-y-5">
+      <PlayerHeader player={player} averages={averages} gamesCount={games.length} shots={games.flatMap(game => game.shots ?? [])} />
 
-  if (isLoading) return <p>Loading...</p>;
-  if (isError) return <p>{error.message}</p>;
 
-  const { player, averages = {}, games = [] } = data;
-
-  return (
-    <section className="space-y-5">
-      <PlayerHeader
-        player={player}
-        averages={averages}
-        gamesCount={games.length}
-      />
-
-      <div>
-        <h2 className="mb-3 text-xl font-bold">Games</h2>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {games.map((game) => (
-            <button
-              key={game.game_id}
-              onClick={() => setSelectedGame(game)}
-              className="w-full rounded-2xl bg-surface p-4 text-right"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-ink">
-                    vs {game.opponent_name}
-                  </div>
-
-                  <div className="mt-1 text-xs text-muted text-start">
-                    Round {game.round_number}
-                  </div>
-                </div>
-
-                <div className="text-left">
-                  <div className="text-xl font-bold text-accent text-end">
-                    {game.points}
-                  </div>
-                  <div className="text-xs text-end text-muted">PTS</div>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-                <MiniStat label="REB" value={game.rebounds} />
-                <MiniStat label="AST" value={game.assists} />
-                <MiniStat label="STL" value={game.steals} />
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selectedGame && (
-        <GameStatsBottomSheet
-          game={selectedGame}
-          onClose={() => setSelectedGame(null)}
-        />
-      )}
-    </section>
-  );
+      <PlayerGameLog games={games} playerId={playerId} />
+    </section>;
 }
-
-function PlayerHeader({ player, averages, gamesCount }) {
-  return (
-    <div className="rounded-[20px] bg-surface p-5">
+function PlayerHeader({
+  player,
+  averages,
+  gamesCount,
+  shots
+}) {
+  const {
+    t
+  } = usePreferences();
+  return <div className="rounded-[20px] bg-surface p-5">
       <div className="flex items-center gap-4">
         <PlayerAvatar player={player} className="h-16 w-16" />
 
         <div className="min-w-0">
           <h1 className="break-words text-2xl font-bold sm:text-3xl">{player.name}</h1>
-          <p className="text-sm text-muted">{gamesCount} games played</p>
+          <p className="text-sm text-muted">{gamesCount}{" "}{t("games played")}</p>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <MainStat label="PPG" value={averages.ppg} />
-        <MainStat label="RPG" value={averages.rpg} />
-        <MainStat label="APG" value={averages.apg} />
+      <div className="mt-6 grid min-w-0 gap-5 md:grid-cols-2">
+        <section className="min-w-0" aria-label={t("Season averages")}>
+          <h2 className="mb-4 text-lg font-bold">{t("Season averages")}</h2>
+          <div className="grid grid-cols-3 gap-3">
+            <MainStat label={t("PPG")} value={averages.ppg} />
+            <MainStat label={t("RPG")} value={averages.rpg} />
+            <MainStat label={t("APG")} value={averages.apg} />
+            <MainStat label={t("SPG")} value={averages.spg} />
+            <MainStat label={t("BPG")} value={averages.bpg} />
+            <MainStat label={t("TPG")} value={averages.tpg} />
+            <div className="col-span-3 rounded-2xl bg-raised p-3 text-center"><PlayerMinutes playerId={player.id ?? player.player_id} /></div>
+          </div>
+        </section>
+        <section className="min-w-0 rounded-2xl bg-raised p-4" aria-label={t("Season shot map")}>
+          <h2 className="mb-4 text-lg font-bold">{t("Season shot map")}</h2>
+          <ShotMap shots={shots} />
+        </section>
       </div>
-
-      <div className="mt-3 grid grid-cols-3 gap-3">
-        <MainStat label="SPG" value={averages.spg} />
-        <MainStat label="BPG" value={averages.bpg} />
-        <MainStat label="TPG" value={averages.tpg} />
-      </div>
-    </div>
-  );
+    </div>;
 }
-
-function MainStat({ label, value }) {
-  return (
-    <div className="rounded-2xl bg-raised p-3 text-center">
-      <div className="text-2xl font-bold text-accent">
+function MainStat({
+  label,
+  value
+}) {
+  const {
+    t
+  } = usePreferences();
+  return <div className="rounded-2xl bg-raised p-3 text-center">
+      <div dir="ltr" className="text-2xl font-bold text-accent">
         {Number(value ?? 0)}
       </div>
-      <div className="mt-1 text-xs text-muted">{label}</div>
-    </div>
-  );
-}
-
-function SheetStatRow({ label, value }) {
-  return (
-    <div className="flex flex-row justify-between">
-      <div className="text-sm text-ink">{label}</div>
-      <div className="text-sm text-ink">
-        {Number(value ?? 0)}
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-xl bg-raised p-2">
-      <div className="font-bold text-ink">{value}</div>
-      <div className="text-xs text-muted">{label}</div>
-    </div>
-  );
-}
-
-function GameStatsBottomSheet({ game, onClose }) {
-  const [shotFilter, setShotFilter] = useState("all");
-  const twoAttempts = Number(game.two_made ?? 0) + Number(game.two_miss ?? 0);
-  const threeAttempts = Number(game.three_made ?? 0) + Number(game.three_miss ?? 0);
-  const ftAttempts = Number(game.ft_made ?? 0) + Number(game.ft_miss ?? 0);
-
-  return (
-    <Dialog onClose={onClose} title={"vs " + game.opponent_name} drawer>
-
-      <div className="bg-surface p-5">
-        <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-line" />
-
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">vs {game.opponent_name}</h2>
-            <p className="text-sm text-muted">
-              Round {game.round_number}
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-full bg-raised px-4 py-2 text-sm"
-          >
-            Close
-          </button>
-        </div>
-        <div className="mt-5 rounded-2xl bg-raised p-4">
-          <div className="space-y-3 text-sm">
-            <ShotChart shots={game.shots ?? []} filter={shotFilter} />
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter shots">
-              <FilterButton label="All shots" active={shotFilter === "all"} onClick={() => setShotFilter("all")} />
-              <FilterButton label="Makes" active={shotFilter === "makes"} onClick={() => setShotFilter("makes")} />
-              <FilterButton label="Misses" active={shotFilter === "misses"} onClick={() => setShotFilter("misses")} />
-            </div>
-            <SheetStatRow label="Points" value={game.points} />
-            <ShotRow label="Free throws" made={game.ft_made ?? 0} attempts={ftAttempts} />
-            <ShotRow label="2 pointers" made={game.two_made ?? 0} attempts={twoAttempts} />
-            <ShotRow
-              label="3 pointers"
-              made={game.three_made ?? 0}
-              attempts={threeAttempts}
-            />
-            <ShotRow
-              label="Field goals"
-              made={Number(game.three_made ?? 0) + Number(game.two_made ?? 0)}
-              attempts={threeAttempts + twoAttempts}
-            />
-            <div className="w-full h-px bg-line" />
-            <SheetStatRow label="Rebounds" value={game.rebounds} />
-            <SheetStatRow label="Defensive Rebounds" value={game.defensive_rebounds} />
-            <SheetStatRow label="Offensive Rebounds" value={game.offensive_rebounds} />
-            <div className="w-full h-px bg-line" />
-            <SheetStatRow label="Assists" value={game.assists} />
-            <SheetStatRow label="Turnovers" value={game.turnovers} />
-            <SheetStatRow label="Steals" value={game.steals} />
-            <SheetStatRow label="Blocks" value={game.blocks} />
-          </div>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-function ShotRow({ label, made, attempts }) {
-  const percentage =
-    attempts === 0 ? 0 : ((Number(made) / attempts) * 100).toFixed(0);
-
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-ink">{label}</span>
-
-      <span className="font-semibold text-ink">
-        {made}/{attempts} ({percentage}%)
-      </span>
-    </div>
-  );
-}
-
-function ShotChart({ shots, filter }) {
-  const filteredShots = shots.filter((shot) => {
-    const isMade = shot.type === "TWO_MADE" || shot.type === "THREE_MADE";
-
-    if (filter === "makes") {
-      return isMade;
-    }
-
-    if (filter === "misses") {
-      return !isMade;
-    }
-
-    return true;
-  });
-  return (
-    <div className="relative mx-auto aspect-[15/14] w-full max-w-[320px] overflow-hidden bg-surface border border-line">
-      <img
-        src="/court_full.svg"
-        alt="Basketball court"
-        className="absolute inset-0 h-full w-full object-fill"
-      />
-      {filteredShots.map((shot, index) => {
-        const x = Number(shot.shot_x);
-        const y = Number(shot.shot_y);
-
-        const isMade = shot.type === "TWO_MADE" || shot.type === "THREE_MADE";
-
-        return (
-          <div
-            key={index}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{
-              left: `${(x / 15) * 100}%`,
-              top: `${(y / 14) * 100}%`,
-            }}
-          >
-            {isMade ? (
-              <div className="h-3 w-3 rounded-full border-[3px] border-success" />
-            ) : (
-              <div className="relative h-3 w-3">
-                <div className="absolute left-1/2 top-1/2 h-3 w-[3px] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-danger" />
-                <div className="absolute left-1/2 top-1/2 h-3 w-[3px] -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-danger" />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function FilterButton({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-        active ? "bg-accent text-white" : "bg-surface text-muted"
-      }`}
-    >
-      {label}
-    </button>
-  );
+      <div className="mt-1 text-xs text-muted">{t(label)}</div>
+    </div>;
 }

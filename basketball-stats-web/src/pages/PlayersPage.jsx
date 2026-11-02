@@ -1,33 +1,34 @@
+import PlayerMinutes from "../components/PlayerMinutes";
+import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getPlayers } from "../api/playersApi";
-
 export default function PlayersPage() {
-  const { data = [], isLoading, isError, error } = useQuery({
+  const {
+    t
+  } = usePreferences();
+  const {
+    data = [],
+    isLoading,
+    isError
+  } = useQuery({
     queryKey: ["players"],
-    queryFn: getPlayers,
+    queryFn: getPlayers
   });
-
-  if (isLoading) return <p>Loading...</p>;
-  if (isError) return <p>{error.message}</p>;
-
-  return (
-    <section className="space-y-5">
+  if (isLoading) return <p>{t("Loading...")}</p>;
+  if (isError) return <p>{t("Unable to load data. Please try again.")}{/* error details are not user-facing */}</p>;
+  return <section className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold">Players</h1>
+        <h1 className="text-3xl font-bold">{t("Players")}</h1>
         <p className="mt-1 text-sm text-muted">
-          {data.length} players
+          {data.length}{" "}{t("players")}
         </p>
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {data.map((player) => (
-          <Link
-            key={player.id}
-            to={`/players/${player.id}`}
-            className="block rounded-[20px] bg-surface p-4 active:scale-[0.98]"
-          >
+        {data.map(player => <Link key={player.id} to={`/players/${player.id}`} className="block rounded-[20px] bg-surface p-4 active:scale-[0.98]">
+
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
         <PlayerAvatar player={player} className="h-14 w-14" />
@@ -36,8 +37,9 @@ export default function PlayersPage() {
                   <h2 className="break-words text-lg font-bold text-ink">
                     {player.name}
                   </h2>
+                  <PlayerMinutes playerId={player.id} />
 
-                  
+
                 </div>
               </div>
 
@@ -45,9 +47,7 @@ export default function PlayersPage() {
                 ›
               </div>
             </div>
-          </Link>
-        ))}
+          </Link>)}
       </div>
-    </section>
-  );
+    </section>;
 }

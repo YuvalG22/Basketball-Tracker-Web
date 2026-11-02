@@ -1,6 +1,7 @@
 // Official institutional assets; Ariel (public domain) and Bar-Ilan (CC0) via Commons.
+// Afeka: official Hebrew artwork, lettering adapted to dark ink for white backgrounds.
 export const teams = [
-  { id: "afeka", aliases: ["Afeka", "אפקה", "מכללת אפקה"], file: "afeka.svg", source: "https://www.afeka.ac.il/" },
+  { id: "afeka", aliases: ["Afeka", "אפקה", "מכללת אפקה"], file: "afeka.svg", source: "https://www.afeka.ac.il/media/owsb1xq5/logo-1.svg" },
   { id: "ariel", aliases: ["Ariel", "Ariel University", "אריאל", "אוניברסיטת אריאל"], file: "ariel.svg", source: "https://commons.wikimedia.org/wiki/File:Ariel_University_Logo.svg" },
   { id: "biu", aliases: ["Bar Ilan", "Bar-Ilan University", "Bar Ilan University", "BIU", "בר אילן", "אוניברסיטת בר אילן"], file: "biu.png", source: "https://commons.wikimedia.org/wiki/File:Bar_Ilan_logo.png" },
   { id: "hit", aliases: ["HIT", "Holon Institute of Technology", "חולון", "המכון הטכנולוגי חולון"], file: "hit.png", source: "https://www.hit.ac.il/" },
