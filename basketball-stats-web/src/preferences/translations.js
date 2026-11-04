@@ -1,4 +1,6 @@
 ﻿export const hebrew = {
+  "Plus/minus":"פלוס/מינוס", "+/-":"+/-",
+  "Plus/minus per game":"פלוס/מינוס למשחק",
   "Afeka":"אפקה", "Afeka lead":"אפקה ביתרון",
   "Your team, at a glance.":"כל מה שחשוב על הקבוצה, במבט אחד.", "View all games":"לכל המשחקים", "Completed games":"משחקים שהסתיימו",
   "Recent results could not be loaded.":"לא ניתן לטעון את התוצאות האחרונות.", "Last game leaders":"מצטייני המשחק האחרון", "No player stats recorded.":"לא נרשמה סטטיסטיקת שחקנים.", "Recent games":"משחקים אחרונים", "Last 5":"חמשת האחרונים",

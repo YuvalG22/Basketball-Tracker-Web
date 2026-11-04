@@ -62,13 +62,13 @@ test("timeline filters periods and overtime and shows an empty period", async ()
   assert.match(container.textContent, /First Player/);
   assert.match(container.textContent, /Assist: Assistant/);
   assert.ok(container.querySelector("table.play-table"));
-  assert.deepEqual([...container.querySelectorAll("thead th")].map(cell => cell.textContent), [game.opponent_name, "Score / Time", "Afeka"]);
+  assert.deepEqual([...container.querySelectorAll("thead th")].map(cell => cell.textContent), [game.opponent_name, "", "Afeka"]);
   assert.equal(container.querySelector(".play-card"), null);
   assert.equal(container.querySelector("img"), null);
   assert.ok(container.querySelector('[data-team-side="home"] .play-home'));
   assert.ok(container.querySelector('[data-team-side="away"] .play-away'));
   assert.equal(container.querySelectorAll(".play-clock").length, 2);
-  const center = container.querySelector(".play-score[aria-label]") ?? container.querySelector("tbody td.play-score");
+  const center = container.querySelector("tbody td.play-score");
   assert.equal(center.children[0].getAttribute("aria-label"), "Score");
   assert.ok(center.children[1].classList.contains("play-clock"));
   assert.match(center.children[1].textContent, /Q1.*8:20/);
@@ -259,7 +259,8 @@ test("box score preserves column and roster order without sorting controls", asy
     { player_id:'a',player_name:'Alpha',points:10 }, { player_id:'b',player_name:'Beta',points:2 }, { player_id:'c',player_name:'Gamma',points:30 },
   ].map(player => ({ ...player, defensive_rebounds:2,offensive_rebounds:1,assists:1,steals:0,blocks:0,fouls:3,turnovers:2,two_made:2,two_miss:1,three_made:1,three_miss:2,ft_made:0,ft_miss:0 }));
   await render('/src/components/BoxScore.jsx', { game,players,events:[],lineupEvents:[] }, 'sort-cycle');
-  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','AST','DREB','OREB','STL','BLK','FG','3PT','FT','TO','PF']);
+  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','AST','DREB','OREB','STL','BLK','FG','3PT','FT','TO','PF','+/-']);
+  assert.equal(container.querySelector('tbody tr').lastElementChild.textContent, '—');
   const names=()=>[...container.querySelectorAll('tbody tr')].map(row=>row.cells[0].textContent.split('#')[0]);
   assert.deepEqual(names(),['Alpha','Beta','Gamma']);
   assert.equal(container.querySelectorAll('thead button').length,0);
@@ -274,6 +275,7 @@ test("recorded starters and minutes are shared across box score, player cards an
   const { default: Box } = await vite.ssrLoadModule('/src/components/BoxScore.jsx');
   const players=Array.from({length:6},(_,index)=>({player_id:String(index+1),player_name:'Player '+(index+1),defensive_rebounds:index<5?2:0,offensive_rebounds:index<5?1:0,fouls:index<5?3:0}));
   const detail={game:{...game,id:'timed'},players,events:[{type:'PERIOD_END',period:4,clock_sec_remaining:0}],lineupEvents:players.slice(0,5).map(player=>({type:'SUB_IN',player_id:player.player_id,period:1,clock_sec_remaining:600}))};
+  detail.events.push({id:'score',local_id:10,type:'THREE_MADE',period:1,clock_sec_remaining:500,created_at:10});
   const client=new QueryClient({defaultOptions:{queries:{staleTime:Infinity,retry:false}}});
   client.setQueryData(['games'],[detail.game]);client.setQueryData(['game-details','timed'],detail);
   try {
@@ -284,11 +286,15 @@ test("recorded starters and minutes are shared across box score, player cards an
     const groups=[...container.querySelectorAll('th[scope="rowgroup"]')].map(el=>el.textContent);
     assert.deepEqual(groups,['Bench']);
     assert.match(container.querySelector('tbody').textContent,/40:00/);
+    assert.equal(container.querySelector('tbody tr').lastElementChild.textContent, '+3');
+    assert.equal(container.querySelectorAll('tbody')[1].querySelector('tr:last-child').lastElementChild.textContent, '0');
     const opener=container.querySelector('[aria-haspopup="dialog"]');
     assert.ok(opener.closest('tr').textContent.includes('40:00'));
+    assert.equal(opener.closest('tr').querySelector('[data-compact-label="+/-"]').textContent, '+3');
     await click(opener);
     assert.match(container.querySelector('dialog').textContent,/Minutes40:00/);
     assert.match(container.querySelector('dialog').textContent,/Fouls3/);
+    assert.match(container.querySelector('dialog').textContent,/Plus\/minus\+3/);
   } finally { await act(async()=>root.render(null));client.clear(); }
 });
 
@@ -315,4 +321,32 @@ test("season MPG has a dedicated ranking card with numeric time sorting", async 
     assert.ok(dialog.textContent.indexOf('High')<dialog.textContent.indexOf('Low'));
     assert.ok(dialog.textContent.indexOf('Third')<dialog.textContent.indexOf('Unknown'));
   } finally { await act(async()=>root.render(null));client.clear(); }
+});
+
+test("season plus/minus ranks per-game averages and lists unknown values last", async () => {
+  const { default: Page } = await vite.ssrLoadModule('/src/pages/SeasonStatsPage.jsx');
+  const { MinutesContext } = await vite.ssrLoadModule('/src/timing/context.js');
+  const client = new QueryClient({defaultOptions:{queries:{staleTime:Infinity,retry:false}}});
+  client.setQueryData(['season-stats'], [
+    {player_id:'positive',player_name:'Positive',gp:2},
+    {player_id:'negative',player_name:'Negative',gp:2},
+    {player_id:'zero',player_name:'Zero',gp:1},
+    {player_id:'unknown',player_name:'Unknown',gp:1},
+  ]);
+  try {
+    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},
+      React.createElement(MinutesContext.Provider,{value:{games:{},averages:{},plusMinusTotals:{positive:5,negative:-7,zero:0}}},React.createElement(Page)))));
+    const heading = [...container.querySelectorAll('h2')].find(el=>el.textContent==='Plus/minus per game');
+    const card = heading.parentElement.parentElement.parentElement;
+    assert.match(card.textContent,/\+2\.5/);
+    assert.match(card.textContent,/-3\.5/);
+    assert.match(card.textContent,/0\.0/);
+    assert.doesNotMatch(card.textContent,/Unknown/);
+    assert.ok(card.textContent.indexOf('Positive') < card.textContent.indexOf('Zero'));
+    assert.ok(card.textContent.indexOf('Zero') < card.textContent.indexOf('Negative'));
+    await click(card.querySelector('button'));
+    const dialog = container.querySelector('dialog');
+    assert.ok(dialog.textContent.indexOf('Negative') < dialog.textContent.indexOf('Unknown'));
+    assert.match(dialog.textContent,/—/);
+  } finally { await act(async()=>root.render(null)); client.clear(); }
 });

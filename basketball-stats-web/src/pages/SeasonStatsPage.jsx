@@ -1,5 +1,6 @@
 import { useMinutes } from "../timing/context";
 import { formatMinutes } from "../utils/playingTime";
+import { formatAveragePlusMinus } from "../utils/plusMinus";
 import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
 import Dialog from "../components/Dialog";
@@ -85,13 +86,18 @@ const statCards = [{
   title: "Free Throws",
   label: "FT",
   key: "ftm"
+}, {
+  title: "Plus/minus per game",
+  label: "+/-",
+  customValue: player => formatAveragePlusMinus(player.plusMinusAverage),
+  sortValue: player => player.plusMinusAverage ?? -Infinity
 }];
 export default function SeasonStatsPage() {
   const {
     t
   } = usePreferences();
   const [selectedStat, setSelectedStat] = useState(null);
-  const { averages } = useMinutes();
+  const { averages, plusMinusTotals = {} } = useMinutes();
   const {
     data = [],
     isLoading,
@@ -100,7 +106,11 @@ export default function SeasonStatsPage() {
     queryKey: ["season-stats"],
     queryFn: getSeasonStats
   });
-  const players = useMemo(() => data.map(player => ({ ...player, mpgSeconds: averages[String(player.player_id)] })), [data, averages]);
+  const players = useMemo(() => data.map(player => {
+    const total = plusMinusTotals[String(player.player_id)];
+    return { ...player, mpgSeconds: averages[String(player.player_id)],
+      plusMinusAverage: total != null && Number(player.gp) > 0 ? total / Number(player.gp) : undefined };
+  }), [data, averages, plusMinusTotals]);
   const sortedByStat = useMemo(() => {
     if (!selectedStat) return [];
     return [...players].sort((a, b) => {

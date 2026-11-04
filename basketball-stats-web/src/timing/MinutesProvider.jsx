@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { getGames, getGameDetails } from "../api/gamesApi";
 import { calculatePlayingTime } from "../utils/playingTime";
+import { calculatePlusMinus, seasonPlusMinusTotals } from "../utils/plusMinus";
 import { MinutesContext } from "./context";
 export default function MinutesProvider({ children }) {
   const [enabled, setEnabled] = useState(false);
@@ -13,7 +14,7 @@ export default function MinutesProvider({ children }) {
   details.forEach((query, index) => {
     if (!query.data?.game) return;
     const result = calculatePlayingTime(query.data);
-    games[String(list.data[index].id)] = { ...result, players: query.data.players };
+    games[String(list.data[index].id)] = { ...result, plusMinus: calculatePlusMinus(query.data), players: query.data.players };
     for (const player of query.data.players ?? []) {
       const id = String(player.player_id);
       if (result.seconds[id] == null) unknown.add(id);
@@ -24,5 +25,6 @@ export default function MinutesProvider({ children }) {
     }
   });
   const averages = complete ? Object.fromEntries(Object.keys(totals).filter(id => !unknown.has(id)).map(id => [id, totals[id] / (counts[id] || 1)])) : {};
-  return <MinutesContext.Provider value={{ games, averages, request }}>{children}</MinutesContext.Provider>;
+  const plusMinusTotals = seasonPlusMinusTotals(games, complete);
+  return <MinutesContext.Provider value={{ games, averages, plusMinusTotals, request }}>{children}</MinutesContext.Provider>;
 }

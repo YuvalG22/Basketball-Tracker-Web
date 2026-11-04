@@ -33,7 +33,7 @@ export default function PlayByPlay({
             <colgroup><col /><col className="play-score-column" /><col /></colgroup>
             <thead><tr>
               <th scope="col">{teamName(game.is_home_game ? "Afeka" : game.opponent_name)}</th>
-              <th scope="col" className="play-score">{t("Score / Time")}</th>
+              <th scope="col" className="play-score" aria-label={t("Score / Time")} />
               <th scope="col" className="play-away-heading">{teamName(game.is_home_game ? game.opponent_name : "Afeka")}</th>
             </tr></thead>
             <tbody>

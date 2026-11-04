@@ -1,3 +1,4 @@
+import { formatPlusMinus } from "../utils/plusMinus";
 import { useMinutes } from "../timing/context";
 import { formatMinutes } from "../utils/playingTime";
 import { formatGameRound, isPlayoffGame } from "../utils/gameRound";
@@ -40,7 +41,7 @@ export default function PlayerGameLog({ games, playerId, player, playerName }) {
     const result = resultById.get(String(game.game_id));
     const detail = timing.games[String(game.game_id)];
     const player = detail?.players?.find(row => String(row.player_id) === String(playerId));
-    return { ...result, ...game, seconds: detail?.seconds[String(playerId)], fouls: game.fouls ?? player?.fouls, team_score: game.team_score ?? result?.team_score, opponent_score: game.opponent_score ?? result?.opponent_score, is_playoff: game.is_playoff ?? result?.is_playoff, playoff_stage: game.playoff_stage ?? result?.playoff_stage, playoff_game_number: game.playoff_game_number ?? result?.playoff_game_number };
+    return { ...result, ...game, seconds: detail?.seconds[String(playerId)], plusMinus: detail?.plusMinus?.[String(playerId)], fouls: game.fouls ?? player?.fouls, team_score: game.team_score ?? result?.team_score, opponent_score: game.opponent_score ?? result?.opponent_score, is_playoff: game.is_playoff ?? result?.is_playoff, playoff_stage: game.playoff_stage ?? result?.playoff_stage, playoff_game_number: game.playoff_game_number ?? result?.playoff_game_number };
   });
   const selectedGame = rows.find(game => String(game.game_id) === selectedId);
   return <section aria-label={t("Game log")}>
@@ -53,6 +54,7 @@ export default function PlayerGameLog({ games, playerId, player, playerName }) {
           <th scope="col" className="player-log-extra">{t("MIN")}</th>
           {logStats.map(([label, , full], index) => <th key={label} scope="col" className={index > 2 ? "player-log-extra" : undefined} title={t(full)}>{t(label)}</th>)}
           {['FG', '2PT', '3PT', 'FT'].map(label => <th scope="col" className="player-log-extra" key={label}>{t(label)}</th>)}
+          <th scope="col" title={t("Plus/minus")}><span dir="ltr">+/-</span></th>
           {rows.some(game => game.fouls != null) && <th scope="col" className="player-log-extra">{t("Fouls")}</th>}
         </tr></thead>
         <tbody>{rows.map(game => {
@@ -68,6 +70,7 @@ export default function PlayerGameLog({ games, playerId, player, playerName }) {
             <td className="player-log-extra" data-label={t("Minutes")}><span dir="ltr">{formatMinutes(game.seconds)}</span></td>
             {logStats.map(([label, key, full], index) => <td key={key} className={index > 2 ? "player-log-extra" : undefined} data-label={t(full)} data-compact-label={t(label)}><span dir="ltr">{count(game[key])}</span></td>)}
             {shots.map(([label, made, attempts]) => <td className="player-log-shooting" data-label={t(label)} key={label}><span dir="ltr">{shootingValue(made, attempts)}</span></td>)}
+            <td data-label={t("Plus/minus")} data-compact-label="+/-"><span dir="ltr">{formatPlusMinus(game.plusMinus)}</span></td>
             {rows.some(row => row.fouls != null) && <td className="player-log-extra" data-label={t("Fouls")}><span dir="ltr">{game.fouls == null ? '—' : count(game.fouls)}</span></td>}
           </tr>;
         })}</tbody>
@@ -125,6 +128,7 @@ export function PlayerGameDialog({ game, player, playerName, loading = false, on
             <h3 className="mb-3 font-bold">{t("Player statistics")}</h3>
             <dl className="space-y-3">
               <div className="flex items-center justify-between gap-2 text-sm"><dt>{t("Minutes")}</dt><dd dir="ltr" className="shrink-0 font-bold tabular-nums">{formatMinutes(game.seconds)}</dd></div>
+              <div className="flex items-center justify-between gap-2 text-sm"><dt>{t("Plus/minus")}</dt><dd dir="ltr" className="shrink-0 font-bold tabular-nums">{formatPlusMinus(game.plusMinus)}</dd></div>
               {gameStats(game).map(([label, key]) => <div key={key} className="flex items-center justify-between gap-2 text-sm"><dt>{t(label)}</dt><dd dir="ltr" className="shrink-0 font-bold tabular-nums">{count(game[key])}</dd></div>)}
             </dl>
           </section>
