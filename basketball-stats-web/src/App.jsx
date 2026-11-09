@@ -7,6 +7,7 @@ import PlayersPage from "./pages/PlayersPage";
 import PlayerDetailsPage from "./pages/PlayerDetailsPage";
 import GameDetailsPage from "./pages/GameDetailsPage";
 import HomePage from "./pages/HomePage";
+import LeaguePage from "./pages/LeaguePage";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/games/:gameId" element={<GameDetailsPage />} />
         <Route path="/players" element={<PlayersPage />} />
         <Route path="/players/:playerId" element={<PlayerDetailsPage />} />
+        <Route path="/league" element={<LeaguePage />} />
       </Route>
     </Routes>
   );

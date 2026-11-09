@@ -1,8 +1,10 @@
 ﻿import { formatGameRound } from "../utils/gameRound";
 import { usePreferences } from "../preferences/context";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getHomeGame } from "../api/homeApi";
+import { CURRENT_SEASON, gameSeason } from "../utils/schedule";
+
+const LAST_SEASON = "25/26";
 import { getGames, getGameDetails } from "../api/gamesApi";
 import TeamLogo from "../components/TeamLogo";
 import PlayerAvatar from "../components/PlayerAvatar";
@@ -13,29 +15,55 @@ const resultKey = result => result === "W" ? "Win" : result === "L" ? "Loss" : "
 const resultClass = result => result === "W" ? "bg-success" : result === "L" ? "bg-danger" : "bg-muted";
 
 export default function HomePage() {
-  const { t, teamName, language } = usePreferences();
-  const home = useQuery({ queryKey: ["home-game"], queryFn: getHomeGame });
+  const { t, teamName, language, playerName } = usePreferences();
+  const [params, setParams] = useSearchParams();
+  const season = params.get("season") === LAST_SEASON ? LAST_SEASON : CURRENT_SEASON;
+  const selectSeason = value => {
+    const next = new URLSearchParams(params);
+    next.set("season", value);
+    setParams(next);
+  };
+  const gamesLink = `/games?season=${encodeURIComponent(season)}`;
   const history = useQuery({ queryKey: ["games"], queryFn: getGames });
-  const game = home.data?.game?.status === "FINISHED" ? home.data.game : null;
+  const recent = (history.data ?? []).filter(item => !item.is_deleted && item.status === "FINISHED" && gameSeason(item) === season)
+    .sort((a, b) => Number(b.game_date_epoch) - Number(a.game_date_epoch));
+  const game = recent[0] ?? null;
   const detail = useQuery({ queryKey: ["game-details", String(game?.id)], queryFn: () => getGameDetails(game.id), enabled: Boolean(game) });
-  const recent = [...(history.data ?? [])].sort((a, b) => Number(b.game_date_epoch) - Number(a.game_date_epoch));
   const date = value => new Date(Number(value)).toLocaleDateString(language === "he" ? "he-IL" : "en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-  if (home.isLoading) return <p role="status">{t("Loading...")}</p>;
-  if (home.isError) return <div role="alert" className="rounded-2xl bg-surface p-5"><p>{t("Unable to load data. Please try again.")}</p><button className="mt-3 rounded-xl bg-raised px-4 py-2" onClick={() => home.refetch()}>{t("Retry")}</button></div>;
-  if (!game) return <section className="space-y-5"><h1 className="text-3xl font-bold">{t("Home")}</h1><div className="rounded-[20px] bg-surface p-5 text-center"><p className="text-muted">{t("No completed games yet")}</p><Link to="/games" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-accent">{t("View all games")} <ForwardArrow /></Link></div></section>;
+  const header = <div className="flex flex-wrap items-end justify-between gap-4">
+    <div><h1 className="text-3xl font-bold sm:text-4xl">{t("Home")}</h1><p className="mt-2 text-sm text-muted">{t("Your team, at a glance.")}</p></div>
+    <div className="flex flex-wrap items-center gap-3">
+      {history.isSuccess && <span className="rounded-full border border-line px-3 py-1.5 text-xs text-muted">{recent.length} {t("Completed games")}</span>}
+      <label className="flex items-center gap-2 text-sm font-medium">
+        {t("Season")}
+        <select value={season} onChange={event => selectSeason(event.target.value)} className="min-h-11 rounded-xl border border-line bg-surface px-3 py-2 text-ink">
+          <option value={CURRENT_SEASON}>{CURRENT_SEASON} · {t("Current season")}</option>
+          <option value={LAST_SEASON}>{LAST_SEASON} · {t("Last season")}</option>
+        </select>
+      </label>
+    </div>
+  </div>;
+  if (history.isLoading) return <section className="space-y-6">{header}<p role="status">{t("Loading...")}</p></section>;
+  if (history.isError) return <section className="space-y-6">{header}<div role="alert" className="rounded-2xl bg-surface p-5"><p>{t("Unable to load data. Please try again.")}</p><button className="mt-3 rounded-xl bg-raised px-4 py-2" onClick={() => history.refetch()}>{t("Retry")}</button></div></section>;
+  if (!game) return <section className="space-y-6">{header}
+    <div className="rounded-[24px] border border-line bg-surface px-5 py-12 text-center">
+      <p className="text-xs font-semibold text-accent">{t("Season")} {season}</p>
+      <h2 className="mt-3 text-xl font-bold">{t("No completed games yet")}</h2>
+      <p className="mt-2 text-sm text-muted">{t("Results and game leaders will appear after the first completed game of this season.")}</p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+        <Link to={gamesLink} className="inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-white">{t("View all games")} <ForwardArrow /></Link>
+        {season === CURRENT_SEASON && <button type="button" onClick={() => selectSeason(LAST_SEASON)} className="min-h-11 rounded-xl bg-raised px-4 text-sm font-semibold">{t("View last season")}</button>}
+      </div>
+    </div>
+  </section>;
 
   const result = resultOf(game);
   const homeTeam = { name: game.is_home_game ? "Afeka" : game.opponent_name, score: Number(game.is_home_game ? game.team_score : game.opponent_score) };
   const awayTeam = { name: game.is_home_game ? game.opponent_name : "Afeka", score: Number(game.is_home_game ? game.opponent_score : game.team_score) };
   return <section className="space-y-6">
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><h1 className="text-3xl font-bold sm:text-4xl">{t("Home")}</h1><p className="mt-2 text-sm text-muted">{t("Your team, at a glance.")}</p></div>
-      {history.isSuccess && <span className="rounded-full border border-line px-3 py-1.5 text-xs text-muted">{recent.length} {t("Completed games")}</span>}
-    </div>
-
-    <TeamOverview games={history.data} />
-    {history.isError && <p className="text-sm text-muted" role="status">{t("Recent results could not be loaded.")} <button className="underline" onClick={() => history.refetch()}>{t("Retry")}</button></p>}
+    {header}
+    <TeamOverview games={recent} />
 
     <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       <div className="min-w-0 space-y-5">
@@ -62,7 +90,7 @@ export default function HomePage() {
               const leader = [...detail.data.players].sort((a, b) => Number(b[field] ?? 0) - Number(a[field] ?? 0))[0];
               return <Link key={field} to={`/players/${leader.player_id}`} className="rounded-2xl bg-raised p-3 transition hover:ring-1 hover:ring-accent">
                 <div className="mb-3 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2"><span className="text-xs text-muted">{t(label)}</span><strong className="text-2xl text-accent">{Number(leader[field] ?? 0)}</strong></div>
-                <div className="flex min-w-0 items-center gap-2"><span className="hidden sm:inline-flex"><PlayerAvatar player={leader} className="h-9 w-9" /></span><span className="min-w-0 break-words text-xs font-semibold sm:text-sm">{leader.player_name}</span></div>
+                <div className="flex min-w-0 items-center gap-2"><span className="hidden sm:inline-flex"><PlayerAvatar player={leader} className="h-9 w-9" /></span><span className="min-w-0 break-words text-xs font-semibold sm:text-sm">{playerName(leader.player_name)}</span></div>
                 <div className="mt-2"><PlayerMinutes playerId={leader.player_id} gameId={game.id} /></div>
               </Link>;
             })}
@@ -71,11 +99,11 @@ export default function HomePage() {
       </div>
 
       <section className="min-w-0 rounded-[24px] border border-line bg-surface p-4 sm:p-5" aria-label={t("Recent games")}>
-        <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{t("Recent games")}</h2><Link to="/games" className="inline-flex min-h-11 items-center text-xs font-semibold text-accent">{t("View all games")}<ForwardArrow /></Link></div>
+        <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{t("Recent games")}</h2><Link to={gamesLink} className="inline-flex min-h-11 items-center text-xs font-semibold text-accent">{t("View all games")}<ForwardArrow /></Link></div>
         {recent.length > 0 && <div className="mb-3 flex items-center justify-between gap-2 border-b border-line pb-4"><span className="text-xs text-muted">{t("Last 5")}</span><div className="flex gap-1.5" dir="ltr">{recent.slice(0, 5).reverse().map(item => <span key={item.id} title={`${teamName(item.opponent_name)}: ${item.team_score}-${item.opponent_score}`} aria-label={t(resultKey(resultOf(item)))} className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${resultClass(resultOf(item))}`}>{resultOf(item)}</span>)}</div></div>}
         <div className="text-[10px] text-end text-muted">{t("Afeka – opponent")}</div>
         <ul className="divide-y divide-line">{recent.slice(0, 5).map(item => <li key={item.id}><Link to={`/games/${item.id}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl py-3 transition hover:bg-raised">
-          <div className="flex min-w-0 items-center gap-2"><TeamLogo name={item.opponent_name} className="h-8 w-12" /><div className="min-w-0"><div className="break-words text-sm font-semibold">{teamName(item.opponent_name)}</div><div className="mt-1 text-[11px] text-muted">{formatGameRound(item, t)}</div><div className="mt-0.5 text-[11px] text-muted">{date(item.game_date_epoch)}</div></div></div>
+          <div className="flex min-w-0 items-center gap-2"><TeamLogo name={item.opponent_name} className="h-8 w-8" /><div className="min-w-0"><div className="break-words text-sm font-semibold">{teamName(item.opponent_name)}</div><div className="mt-1 text-[11px] text-muted">{formatGameRound(item, t)}</div><div className="mt-0.5 text-[11px] text-muted">{date(item.game_date_epoch)}</div></div></div>
           <div className="shrink-0 text-end"><div dir="ltr" className="whitespace-nowrap text-sm font-bold tabular-nums">{item.team_score}–{item.opponent_score}</div><span className={`mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${resultClass(resultOf(item))}`}>{resultOf(item)}</span></div>
         </Link></li>)}</ul>
         {history.isPending && <p role="status" className="py-4 text-sm text-muted">{t("Loading...")}</p>}
@@ -97,7 +125,7 @@ function TeamOverview({ games }) {
 
 function ScoreTeam({ team, winner }) {
   const { teamName } = usePreferences();
-  return <div className="flex min-w-0 flex-col items-center gap-3 text-center"><TeamLogo name={team.name} className="h-14 w-20 sm:h-20 sm:w-28" /><div className={winner ? "font-bold text-ink" : "font-medium text-muted"}>{teamName(team.name)}</div></div>;
+  return <div className="flex min-w-0 flex-col items-center gap-3 text-center"><TeamLogo name={team.name} className="h-14 w-14 sm:h-20 sm:w-20" /><div className={winner ? "font-bold text-ink" : "font-medium text-muted"}>{teamName(team.name)}</div></div>;
 }
 
 function ForwardArrow() {

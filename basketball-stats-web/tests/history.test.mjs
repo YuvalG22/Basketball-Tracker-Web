@@ -30,6 +30,11 @@ const player = {
 async function renderPage(module, route, url, key, data, extraQueries = []) {
   const { default: Page } = await vite.ssrLoadModule(module);
   const client = new QueryClient({ defaultOptions: { queries: historicalQueryOptions } });
+  if (module.includes("PlayerDetailsPage") || module.includes("SeasonStatsPage")) {
+    client.setQueryData(["season-stats","26/27"], [{player_id:"team",gp:1}]);
+    client.setQueryData(["season-stats","25/26"], []);
+    key = [...key, "26/27"];
+  }
   client.setQueryData(key, data);
   for (const [extraKey, extraData] of extraQueries) client.setQueryData(extraKey, extraData);
   try {
@@ -79,17 +84,17 @@ test("momentum includes opponent scoring events from the actual API contract", (
 });
 
 test("home renders a historical away result with correct team name and winner", async () => {
-  const html = await renderPage("/src/pages/HomePage.jsx", "/", "/", ["home-game"], { game });
+  const html = await renderPage("/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["games"], [game]);
   assert.match(html, /LAST GAME/);
   assert.match(html, /Afeka/);
   assert.match(html, /font-bold text-ink">Opponents/);
   assert.doesNotMatch(html, /LIVE|automatically|מתעדכן/);
-  const empty = await renderPage("/src/pages/HomePage.jsx", "/", "/", ["home-game"], { game: null });
+  const empty = await renderPage("/src/pages/HomePage.jsx", "/", "/", ["games"], []);
   assert.match(empty, /No completed games yet/);
 });
 
 test("games page renders numeric results and ties without a false loss", async () => {
-  const html = await renderPage("/src/pages/GamesPage.jsx", "/games", "/games", ["games"], completedGames([
+  const html = await renderPage("/src/pages/GamesPage.jsx", "/games", "/games?season=25%2F26", ["schedule-games"], completedGames([
     game, { ...game, id: "tie", team_score: "10", opponent_score: "10" },
   ]));
   assert.match(html, />L<\/div>/);
@@ -174,8 +179,8 @@ test("player season shot map aggregates locations across games and handles missi
 test("home, games and game details show playoff stage and game number", async () => {
   const playoff = { ...game, round_number: 0, is_playoff: true, playoff_stage: "SEMI_FINAL", playoff_game_number: 2 };
   const pages = [
-    ["/src/pages/HomePage.jsx", "/", "/", ["home-game"], { game: playoff }],
-    ["/src/pages/GamesPage.jsx", "/games", "/games", ["games"], [playoff]],
+    ["/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["games"], [playoff]],
+    ["/src/pages/GamesPage.jsx", "/games", "/games?season=25%2F26", ["schedule-games"], [playoff]],
     ["/src/pages/GameDetailsPage.jsx", "/games/:gameId", "/games/finished", ["game-details", "finished"], { game: playoff, players: [], events: [] }],
   ];
   for (const args of pages) {
@@ -193,7 +198,7 @@ test("home overview uses numeric completed results and links to last-game leader
     {...game,id:'win2',team_score:'9',opponent_score:'8',game_date_epoch:'200'},
   ];
   const detail={game,players:[player,{...player,player_id:'leader',player_name:'Game Leader',points:'20',rebounds:'10',assists:'8'}],events:[],lineupEvents:[]};
-  const html=await renderPage('/src/pages/HomePage.jsx','/','/',['home-game'],{game},[
+  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['games'],history,[
     [['games'],history],[['game-details',game.id],detail],
   ]);
   for (const text of ['50%','10.5','9.8','Last game leaders','Recent games','Game Leader']) assert.ok(html.includes(text),text);
@@ -202,4 +207,50 @@ test("home overview uses numeric completed results and links to last-game leader
   assert.match(html,/href="\/season"/);
   assert.ok(html.indexOf('href="/games/win1"')<html.indexOf('href="/games/win2"'));
   assert.ok(html.indexOf('href="/games/win2"')<html.indexOf('href="/games/draw"'));
+});
+
+test("player details show season shooting totals with weighted percentages and empty shooting", async () => {
+  const html = await renderPage("/src/pages/PlayerDetailsPage.jsx", "/players/:playerId", "/players/player", ["player-details", "player"], {
+    player:{id:"player",name:"Shooter"}, games:[
+      {game_id:"a",two_made:"1",two_miss:"1",three_made:"1",three_miss:0,ft_made:0,ft_miss:"1"},
+      {game_id:"b",two_made:1,two_miss:0,three_made:0,three_miss:2,ft_made:2,ft_miss:1},
+    ],
+  });
+  assert.match(html,/aria-label="Season shooting"/);
+  for (const value of ["3/6 (50%)","2/3 (66.7%)","1/3 (33.3%)","2/4 (50%)"]) assert.ok(html.includes(value),value);
+  const empty = await renderPage("/src/pages/PlayerDetailsPage.jsx", "/players/:playerId", "/players/player", ["player-details", "player"], {player:{id:"player",name:"Shooter"},games:[]});
+  assert.match(empty,/0\/0 \(0%\)/);
+  assert.doesNotMatch(empty,/NaN|Infinity/);
+});
+
+test("Home defaults to the empty current season and never substitutes last-season results", async () => {
+  const historical = {...game,season:'25/26',opponent_name:'Past opponent'};
+  const scheduled = {...game,id:'future',season:'26/27',status:'SCHEDULED',opponent_name:'Future opponent'};
+  const html = await renderPage('/src/pages/HomePage.jsx','/','/',['games'],[historical,scheduled]);
+  assert.match(html,/value="26\/27" selected/);
+  assert.match(html,/No completed games yet/); assert.match(html,/View last season/);
+  assert.match(html,/Results and game leaders will appear after the first completed game of this season/);
+  assert.doesNotMatch(html,/Past opponent|Future opponent|LAST GAME|Last game leaders/);
+  assert.match(html,/href="\/games\?season=26%2F27"/);
+});
+
+test("Home last-season selection filters results, overview, latest game and leaders together", async () => {
+  const previous={...game,id:'previous',season:'25/26',opponent_name:'Previous opponent',team_score:12,opponent_score:10,game_date_epoch:100};
+  const current={...game,id:'current',season:'26/27',opponent_name:'Current opponent',team_score:1,opponent_score:90,game_date_epoch:200};
+  const detail={game:previous,players:[{...player,player_name:'Previous leader'}]};
+  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['games'],[current,previous],[[['game-details','previous'],detail]]);
+  assert.match(html,/Previous opponent/); assert.match(html,/Previous leader/); assert.match(html,/100%/);
+  assert.doesNotMatch(html,/Current opponent/); assert.match(html,/href="\/games\?season=25%2F26"/);
+});
+
+test("season APIs send filters and preserve unfiltered historical player lookups",async()=>{
+  const {apiClient}=await vite.ssrLoadModule('/src/api/apiClient.js');
+  const {getPlayerDetails}=await vite.ssrLoadModule('/src/api/playersApi.js');
+  const {getSeasonStats}=await vite.ssrLoadModule('/src/api/seasonStatsApi.js');
+  const calls=[],original=apiClient.defaults.adapter;
+  apiClient.defaults.adapter=async config=>{calls.push({url:config.url,season:config.params?.season});return {data:[],status:200,statusText:'OK',headers:{},config};};
+  try {
+    await getSeasonStats('26/27');await getPlayerDetails('p','25/26');await getPlayerDetails('p');
+    assert.deepEqual(calls,[{url:'/stats/season',season:'26/27'},{url:'/players/p',season:'25/26'},{url:'/players/p',season:undefined}]);
+  } finally {apiClient.defaults.adapter=original;}
 });

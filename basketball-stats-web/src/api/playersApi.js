@@ -5,7 +5,7 @@ export async function getPlayers() {
   return response.data;
 }
 
-export async function getPlayerDetails(playerId) {
-  const response = await apiClient.get(`/players/${playerId}`);
+export async function getPlayerDetails(playerId, season) {
+  const response = await apiClient.get(`/players/${playerId}`, { params: { season } });
   return response.data;
 }

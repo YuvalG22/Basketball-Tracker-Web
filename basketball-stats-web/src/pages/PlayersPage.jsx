@@ -1,4 +1,3 @@
-import PlayerMinutes from "../components/PlayerMinutes";
 import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +5,7 @@ import { Link } from "react-router-dom";
 import { getPlayers } from "../api/playersApi";
 export default function PlayersPage() {
   const {
-    t
+    t, playerName
   } = usePreferences();
   const {
     data = [],
@@ -35,9 +34,9 @@ export default function PlayersPage() {
 
                 <div className="min-w-0">
                   <h2 className="break-words text-lg font-bold text-ink">
-                    {player.name}
+                    {playerName(player.name)}
                   </h2>
-                  <PlayerMinutes playerId={player.id} />
+                  <p dir="ltr" className="w-fit text-sm text-muted">#{player.number ?? "-"}</p>
 
 
                 </div>

@@ -5,9 +5,9 @@ export default function PlayerAvatar({
   className = "h-10 w-10"
 }) {
   const {
-    t
+    t, playerName
   } = usePreferences();
-  const name = player.name ?? player.player_name ?? "Player";
+  const name = playerName(player.name ?? player.player_name ?? "Player");
   const candidate = player.photo_url ?? player.photoUrl ?? player.image_url;
   const src = typeof candidate === "string" && /^(https?:\/\/|\/[^/])/.test(candidate) ? candidate : null;
   const [failed, setFailed] = useState(null);

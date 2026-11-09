@@ -1,13 +1,29 @@
+import { findTeam } from './teamLogos.js';
+
 const points = {
   FT_MADE: 1, TWO_MADE: 2, THREE_MADE: 3,
   OPP_FT_MADE: -1, OPP_TWO_MADE: -2, OPP_THREE_MADE: -3,
 };
 const timestamp = value => Number.isFinite(Number(value)) ? Number(value) : Date.parse(value) || 0;
 const compareId = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+const gameDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' });
+
+function hasExcludedPlusMinus(game) {
+  if (findTeam(game?.opponent_name)?.id !== 'runi') return false;
+  const date = new Date(Number(game.game_date_epoch));
+  // The first Reichman game's +/- is explicitly marked unavailable.
+  return !Number.isNaN(date.getTime()) && gameDate.format(date) === '2026-05-08';
+}
 
 // Replay the same event order and on-court set as Android. Source IDs are
 // bigint strings over the API, so retain their precision when timestamps tie.
-export function calculatePlusMinus({ players = [], events = [], lineupEvents = [] }) {
+export function calculatePlusMinus({ game, players = [], events = [], lineupEvents = [] }) {
+  if (hasExcludedPlusMinus(game)) return {};
+  // A nonzero opponent score without scoring events cannot be assigned to stints.
+  // An explicitly recorded shutout can still have valid zero opponent points.
+  const opponentScoringTracked = events.some(event => points[event.type] < 0);
+  const shutout = game?.opponent_score != null && game.opponent_score !== '' && Number(game.opponent_score) === 0;
+  if (!opponentScoringTracked && !shutout) return {};
   if (!lineupEvents.some(event => event.type === 'SUB_IN' && event.player_id != null)) return {};
   const totals = Object.fromEntries(players.map(player => [String(player.player_id), 0]));
   const active = new Set();
@@ -37,16 +53,15 @@ export function formatPlusMinus(value) {
 
 export function seasonPlusMinusTotals(games, complete) {
   if (!complete) return {};
-  const totals = {}, unknown = new Set();
+  const totals = {};
   for (const game of Object.values(games)) {
     for (const player of game.players ?? []) {
       const id = String(player.player_id);
       const value = game.plusMinus?.[id];
-      if (value == null) unknown.add(id);
-      else totals[id] = (totals[id] ?? 0) + value;
+      totals[id] = (totals[id] ?? 0) + (value ?? 0);
     }
   }
-  return Object.fromEntries(Object.entries(totals).filter(([id]) => !unknown.has(id)));
+  return totals;
 }
 
 export function formatAveragePlusMinus(value) {

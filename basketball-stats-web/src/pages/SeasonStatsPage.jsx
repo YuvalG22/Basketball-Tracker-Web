@@ -5,8 +5,8 @@ import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
 import Dialog from "../components/Dialog";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getSeasonStats } from "../api/seasonStatsApi";
+import { useStatsSeason } from "../hooks/useStatsSeason";
+import StatsSeasonSelector from "../components/StatsSeasonSelector";
 function getAverage(player, statKey) {
   const total = Number(player[statKey] ?? 0);
   const gamesPlayed = Number(player.gp ?? 0);
@@ -87,26 +87,29 @@ const statCards = [{
   label: "FT",
   key: "ftm"
 }, {
-  title: "Plus/minus per game",
+  title: "+/-",
   label: "+/-",
   customValue: player => formatAveragePlusMinus(player.plusMinusAverage),
   sortValue: player => player.plusMinusAverage ?? -Infinity
 }];
 export default function SeasonStatsPage() {
+  const selection = useStatsSeason();
+  const {t} = usePreferences();
+  return <section className="space-y-5">
+    <h1 className="text-3xl font-bold">{t("Season Stats")}</h1>
+    <StatsSeasonSelector selection={selection} />
+    {selection.query.isError ? <p role="alert">{t("Unable to load data. Please try again.")}</p> : !selection.ready ? <p role="status">{t("Loading...")}</p> :
+      <SeasonRankings key={selection.season} selection={selection} />}
+  </section>;
+}
+function SeasonRankings({selection}) {
   const {
     t
   } = usePreferences();
   const [selectedStat, setSelectedStat] = useState(null);
-  const { averages, plusMinusTotals = {} } = useMinutes();
-  const {
-    data = [],
-    isLoading,
-    isError
-  } = useQuery({
-    queryKey: ["season-stats"],
-    queryFn: getSeasonStats
-  });
-  const players = useMemo(() => data.map(player => {
+  const { averages, plusMinusTotals = {} } = useMinutes(selection.season);
+  const data = selection.query.data;
+  const players = useMemo(() => data.filter(player => Number(player.gp) > 0).map(player => {
     const total = plusMinusTotals[String(player.player_id)];
     return { ...player, mpgSeconds: averages[String(player.player_id)],
       plusMinusAverage: total != null && Number(player.gp) > 0 ? total / Number(player.gp) : undefined };
@@ -119,13 +122,8 @@ export default function SeasonStatsPage() {
       return bValue - aValue;
     });
   }, [players, selectedStat]);
-  if (isLoading) return <p>{t("Loading...")}</p>;
-  if (isError) return <p>{t("Unable to load data. Please try again.")}{/* error details are not user-facing */}</p>;
+  if (!players.length) return <p className="rounded-2xl bg-surface p-5 text-muted">{t("No stats available for this season.")}</p>;
   return <section className="space-y-5">
-      <div>
-        <h1 className="text-3xl font-bold">{t("Season Stats")}</h1>
-      </div>
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {statCards.map(stat => <SeasonStatCard key={stat.key ?? stat.label} stat={stat} players={players} onSeeAll={() => setSelectedStat(stat)} />)}
       </div>
@@ -149,7 +147,7 @@ function SeasonStatCard({
   return <div className="rounded-[20px] bg-surface p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold">{t(stat.title)}</h2>
+          <h2 dir={stat.label === "+/-" ? "ltr" : undefined} className="text-lg font-bold">{t(stat.title)}</h2>
         </div>
 
         <button onClick={onSeeAll} className="rounded-full bg-surface px-4 py-2 text-sm font-semibold text-ink">{t("See all")}
@@ -168,14 +166,14 @@ function PlayerStatRow({
   stat
 }) {
   const {
-    t
+    t, playerName
   } = usePreferences();
   return <div className="flex items-center justify-between gap-3 rounded-2xl bg-raised p-3">
       <div className="flex min-w-0 items-center gap-3">
         <PlayerAvatar player={player} className="h-10 w-10" />
 
         <div className="min-w-0">
-          <div className="break-words font-semibold">{player.player_name}</div>
+          <div className="break-words font-semibold">{playerName(player.player_name)}</div>
           <div className="text-[10px] text-muted">{t("GAMES")}{" "}{player.gp}</div>
         </div>
       </div>
@@ -185,7 +183,7 @@ function PlayerStatRow({
           {stat.customValue ? stat.customValue(player) : getAverage(player, stat.key)}
         </div>
 
-        <div className="text-xs text-end text-muted">{t(stat.label)}</div>
+        <div dir={stat.label === "+/-" ? "ltr" : undefined} className="text-xs text-end text-muted">{t(stat.label)}</div>
       </div>
     </div>;
 }
@@ -204,8 +202,8 @@ function StatsBottomSheet({
 
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">{t(stat.title)}</h2>
-            <p className="text-sm text-muted">{t(stat.label)}</p>
+            <h2 dir={stat.label === "+/-" ? "ltr" : undefined} className="text-xl font-bold">{t(stat.title)}</h2>
+            <p dir={stat.label === "+/-" ? "ltr" : undefined} className="text-sm text-muted">{t(stat.label)}</p>
           </div>
 
           <button onClick={onClose} className="rounded-full bg-surface px-4 py-2 text-sm">{t("Close")}

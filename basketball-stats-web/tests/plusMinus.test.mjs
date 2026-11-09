@@ -9,7 +9,7 @@ const event = (id, type, clock = 500, player = null, period = 1, created = id) =
 });
 const starter = (id = 1) => event(id, 'SUB_IN', 600, id);
 function calculate(all, players = [1, 2, 3, 4, 5, 6]) {
-  return calculatePlusMinus({ players: players.map(player_id => ({ player_id })),
+  return calculatePlusMinus({ game: { opponent_score: 0 }, players: players.map(player_id => ({ player_id })),
     events: all.filter(e => !e.type.startsWith('SUB_')),
     lineupEvents: all.filter(e => e.type.startsWith('SUB_')) });
 }
@@ -94,11 +94,55 @@ test('unavailable lineup history differs from recorded zero; signed formatting',
   assert.deepEqual([undefined, null, NaN, 0, 3, -2].map(formatPlusMinus), ['—', '—', '—', '0', '+3', '-2']);
 });
 
-test('season totals combine completed games without turning missing history into zero', () => {
+test('missing opponent scoring makes every player unavailable unless the final score confirms a shutout', () => {
+  const players = [1, 2].map(player_id => ({ player_id }));
+  const detail = { players, lineupEvents: [starter()], events: [event(10, 'THREE_MADE')] };
+  for (const opponent_score of [59, '59', null, undefined, '']) {
+    const result = calculatePlusMinus({ ...detail, game: { opponent_score } });
+    assert.deepEqual(result, {});
+    assert.equal(formatPlusMinus(result[1]), '—');
+    assert.equal(formatPlusMinus(result[2]), '—');
+  }
+  assert.deepEqual(calculatePlusMinus(detail), {});
+  for (const opponent_score of [0, '0']) {
+    assert.deepEqual(calculatePlusMinus({ ...detail, game: { opponent_score } }), { 1: 3, 2: 0 });
+  }
+  for (const type of ['OPP_FT_MADE', 'OPP_TWO_MADE', 'OPP_THREE_MADE']) {
+    const result = calculatePlusMinus({ ...detail, game: { opponent_score: 59 }, events: [...detail.events, event(11, type)] });
+    assert.equal(typeof result[1], 'number');
+    assert.equal(result[2], 0);
+  }
+  assert.deepEqual(seasonPlusMinusTotals({ tracked: { players, plusMinus: { 1: 3, 2: 0 } }, missing: { players, plusMinus: {} } }, true), { 1: 3, 2: 0 });
+});
+
+test('Reichman on 8 May 2026 is unavailable and contributes zero to the season', () => {
+  const players = [{ player_id: 1 }];
+  const detail = { players, lineupEvents: [starter()], events: [event(10, 'THREE_MADE'), event(11, 'OPP_FT_MADE')] };
+  const base = { opponent_name: 'Reichman', game_date_epoch: String(Date.parse('2026-05-08T12:00:00+03:00')), opponent_score: 1 };
+  const result = calculatePlusMinus({ ...detail, game: base });
+  assert.deepEqual(result, {});
+  assert.equal(formatPlusMinus(result[1]), '—');
+  assert.deepEqual(seasonPlusMinusTotals({ excluded: { players, plusMinus: result }, tracked: { players, plusMinus: { 1: 4 } } }, true), { 1: 4 });
+  for (const opponent_name of ['Reichman University', 'רייכמן']) {
+    assert.deepEqual(calculatePlusMinus({ ...detail, game: { ...base, opponent_name } }), {});
+  }
+  assert.deepEqual(calculatePlusMinus({ ...detail, game: { ...base, game_date_epoch: Date.parse('2026-05-07T21:30:00Z') } }), {});
+  for (const game of [
+    { ...base, opponent_name: 'Wingate' },
+    { ...base, game_date_epoch: Date.parse('2026-05-09T12:00:00+03:00') },
+    { ...base, game_date_epoch: Date.parse('2026-08-05T12:00:00+03:00') },
+    { ...base, game_date_epoch: 'invalid' },
+  ]) {
+    assert.deepEqual(calculatePlusMinus({ ...detail, game }), { 1: 2 });
+  }
+});
+
+test('season totals count unavailable game values as zero after all games load', () => {
   const players = [1, 2, 3].map(player_id => ({ player_id }));
   const games = { a: { players, plusMinus: { 1: 3, 2: -4, 3: 0 } },
     b: { players: players.slice(0, 2), plusMinus: { 1: 2 } } };
   assert.deepEqual(seasonPlusMinusTotals(games, false), {});
-  assert.deepEqual(seasonPlusMinusTotals(games, true), { 1: 5, 3: 0 });
+  assert.deepEqual(seasonPlusMinusTotals(games, true), { 1: 5, 2: -4, 3: 0 });
+  assert.deepEqual(seasonPlusMinusTotals({ missing: { players, plusMinus: {} } }, true), { 1: 0, 2: 0, 3: 0 });
   assert.deepEqual([2.5, -3.25, 0, -0.01, null].map(formatAveragePlusMinus), ['+2.5', '-3.3', '0.0', '0.0', '—']);
 });

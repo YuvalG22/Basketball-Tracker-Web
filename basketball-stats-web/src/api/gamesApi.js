@@ -12,3 +12,9 @@ export async function getGameDetails(gameId) {
   const response = await apiClient.get(`/games/${gameId}`);
   return response.data;
 }
+
+// Games tab includes fixtures; historical/statistical consumers keep getGames().
+export async function getScheduleGames() {
+  const response = await apiClient.get("/games");
+  return (response.data ?? []).filter(game => !game.is_deleted);
+}

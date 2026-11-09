@@ -171,7 +171,7 @@ select { max-width: 100%; }
 .games-list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; padding: 12px; }
 .games-list-meta { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 @media (min-width: 640px) {
-  .games-list-row { grid-template-columns: minmax(120px, 0.3fr) minmax(0, 1fr) 28px; gap: 24px; padding: 10px 16px; }
+  .games-list-row { grid-template-columns: minmax(120px, 0.3fr) minmax(0, 1fr) auto; gap: 24px; padding: 10px 16px; }
   .games-list-meta { grid-column: auto; display: flex; flex-direction: column; align-items: start; gap: 4px; }
 }
 .home-scorecard { background-image: radial-gradient(ellipse at 50% 5%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%); }

@@ -185,7 +185,7 @@ function HeaderTeam({
   } = usePreferences();
   return <div className={`flex flex-col items-center ${align === "right" ? "justify-self-end" : "justify-self-start"}`}>
 
-      <TeamLogo name={name} className="h-14 w-20 sm:h-20 sm:w-32" />
+      <TeamLogo name={name} className="h-14 w-14 sm:h-20 sm:w-20" />
 
       <div className="mt-3 max-w-full break-words text-center text-sm sm:text-lg font-black text-ink">
         {teamName(name)}

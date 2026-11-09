@@ -9,6 +9,7 @@ export default function PlayByPlay({
   const {
     t,
     teamName,
+    playerName,
     language
   } = usePreferences();
   const [period, setPeriod] = useState("all");
@@ -43,9 +44,9 @@ export default function PlayByPlay({
             const opponent = event.type.startsWith("OPP_");
             const homeSide = opponent ? !game.is_home_game : game.is_home_game;
             const seconds = Math.max(0, Number(event.clock_sec_remaining) || 0);
-            const assistName = assistingPlayer(event, players);
+            const assistName = playerName(assistingPlayer(event, players));
             const action = <>
-                  <span className="font-semibold">{event.player_name ?? teamName(opponent ? game.opponent_name : "Afeka")}</span>{" "}
+                  <span className="font-semibold">{playerName(event.player_name) ?? teamName(opponent ? game.opponent_name : "Afeka")}</span>{" "}
                   <span>{t(scoringAction(event.type))}</span>
                   <span className="play-assist">{assistName ? <>{t("Assist:")}{" "}<span className="font-medium">{assistName}</span></> : "\u00a0"}</span>
                 </>;
