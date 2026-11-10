@@ -11,7 +11,7 @@ import { findTeam, teams } from "../src/utils/teamLogos.js";
 import { buildMomentumPoints, gameClockLabel, momentumAxisClock } from "../src/utils/gameStats.js";
 import { existsSync, readFileSync } from "node:fs";
 
-let vite, dom, root, container;
+let vite, dom, root, container, PreferencesContext;
 const renderClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
 before(async () => {
   dom = new JSDOM('<!doctype html><button id="opener">Open</button><div id="root"></div>', { url: "http://localhost" });
@@ -27,6 +27,7 @@ before(async () => {
   container = document.getElementById("root");
   root = createRoot(container);
   vite = await createServer({ server: { middlewareMode: true }, appType: "custom" });
+  ({ PreferencesContext } = await vite.ssrLoadModule("/src/preferences/context.js"));
 });
 after(async () => { await act(async () => root.unmount()); await vite.close(); renderClient.clear(); dom.window.close(); });
 const game = { id: "one", opponent_name: "Long opponent name", quarters_count: 4, quarter_length_sec: 600,
@@ -36,9 +37,13 @@ const events = [
   { id: "a", type: "TWO_MADE", period: 1, clock_sec_remaining: 500, player_name: "First Player", assist_player_name: "Assistant" },
   { id: "b", type: "OPP_THREE_MADE", period: 5, clock_sec_remaining: 60 },
 ];
+// Existing component fixtures assert English labels explicitly.
+function renderInEnglish(element) {
+  root.render(React.createElement(PreferencesContext.Provider, { value: { language: "en", theme: "light" } }, element));
+}
 async function render(module, props, key = "one") {
   const { default: Component } = await vite.ssrLoadModule(module);
-  try { await act(async () => root.render(React.createElement(QueryClientProvider, { client: renderClient }, React.createElement(Component, { ...props, key })))); } catch (error) { throw error.errors?.[0] ?? error; }
+  try { await act(async () => renderInEnglish(React.createElement(QueryClientProvider, { client: renderClient }, React.createElement(Component, { ...props, key })))); } catch (error) { throw error.errors?.[0] ?? error; }
 }
 async function click(element) { await act(async () => element.click()); }
 
@@ -47,10 +52,10 @@ test("league route shows ten initial teams and a fifth navigation tab in both la
   const { default: App } = await vite.ssrLoadModule('/src/App.jsx');
   const { PreferencesContext } = await vite.ssrLoadModule('/src/preferences/context.js');
   const { leagueStandings } = await vite.ssrLoadModule('/src/data/leagueStandings.js');
-  const hebrewTeams = ['אוניברסיטת רייכמן', 'המסלול האקדמי המכללה למינהל', 'אוניברסיטת תל-אביב', 'אפקה - המכללה האקדמית להנדסה בתל-אביב', 'מכון טכנולוגי חולון', 'אגודת הסטודנטים אריאל', 'המרכז האקדמי לוינסקי וינגייט', 'שנקר', 'אוניברסיטת בר אילן', 'המכללה האקדמית להנדסה עש סמי שמעון אשדוד'];
+  const hebrewTeams = ['אוניברסיטת רייכמן', 'המסלול האקדמי המכללה למינהל', 'אוניברסיטת תל-אביב', 'מכללת אפקה', 'מכון טכנולוגי חולון', 'אגודת הסטודנטים אריאל', 'המרכז האקדמי לוינסקי וינגייט', 'שנקר', 'אוניברסיטת בר אילן', 'המכללה האקדמית להנדסה עש סמי שמעון אשדוד'];
   try {
     for (const language of ['en', 'he']) {
-      await act(async () => root.render(React.createElement(PreferencesContext.Provider, { value: { language, theme: 'light' } },
+      await act(async () => renderInEnglish(React.createElement(PreferencesContext.Provider, { value: { language, theme: 'light' } },
         React.createElement(MemoryRouter, { initialEntries: ['/league'] }, React.createElement(App)))));
       assert.equal(container.querySelector('h1').textContent, language === 'he' ? 'טבלת הליגה' : 'League standings');
       assert.deepEqual([...container.querySelectorAll('thead th')].map(cell => cell.textContent), language === 'he' ? ['#', 'קבוצה', 'מש׳', 'נ׳', 'ה׳', '+/-', 'נק׳'] : ['#', 'Team', 'GP', 'W', 'L', '+/-', 'Pts']);
@@ -75,19 +80,29 @@ test("league route shows ten initial teams and a fifth navigation tab in both la
   } finally { await act(async () => root.render(null)); }
 });
 
-test("box score and play by play are both available in document order without tabs", async () => {
+test("summary defaults to box score and supports click and keyboard tab selection", async () => {
   await render("/src/components/GameDetails.jsx", { game, players: [], events });
-  assert.equal(container.querySelector('[role="tablist"]'), null);
-  const panels = container.querySelectorAll('.game-panel');
-  assert.equal(panels.length, 2);
-  assert.equal(panels[0].getAttribute('aria-label'), 'Box Score');
-  assert.equal(panels[1].getAttribute('aria-label'), 'Play by Play timeline');
-  assert.ok(panels[0].textContent.includes('Box Score'));
-  assert.ok(panels[1].textContent.includes('First Player'));
-  const css = readFileSync("src/index.css", "utf8");
-  const layoutRules = [...css.matchAll(/\.game-panels\s*\{([^}]+)\}/g)];
-  assert.equal(layoutRules.length, 1, "no breakpoint may override the stacked layout");
-  assert.match(layoutRules[0][1], /grid-template-columns:\s*minmax\(0, 1fr\)\s*;/);
+  const tabs = [...container.querySelectorAll('[role="tab"]')];
+  const panels = [...container.querySelectorAll('[role="tabpanel"]')];
+  assert.deepEqual(tabs.map(tab => tab.textContent), ["Box Score", "Play by Play", "Team Stats", "Shot map"]);
+  assert.equal(tabs[0].getAttribute("aria-selected"), "true");
+  assert.deepEqual(panels.map(panel => panel.hidden), [false, true, true, true]);
+  await click(tabs[1]);
+  assert.deepEqual(panels.map(panel => panel.hidden), [true, false, true, true]);
+  assert.match(panels[1].textContent, /First Player/);
+  document.documentElement.dir = "ltr";
+  await act(async () => tabs[1].dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
+  assert.equal(tabs[2].getAttribute("aria-selected"), "true");
+  assert.equal(document.activeElement, tabs[2]);
+  await act(async () => tabs[2].dispatchEvent(new window.KeyboardEvent("keydown", { key: "Home", bubbles: true })));
+  assert.equal(tabs[0].getAttribute("aria-selected"), "true");
+  document.documentElement.dir = "rtl";
+  await act(async () => tabs[0].dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })));
+  assert.equal(tabs[1].getAttribute("aria-selected"), "true");
+  await render("/src/components/GameDetails.jsx", { game: {...game, team_score:102}, players: [], events });
+  assert.equal(container.querySelectorAll('[role="tab"]')[1].getAttribute("aria-selected"), "true");
+  await render("/src/components/GameDetails.jsx", { game: {...game,id:"different"}, players: [], events });
+  assert.equal(container.querySelectorAll('[role="tab"]')[0].getAttribute("aria-selected"), "true");
 });
 
 test("Hebrew player labels and an open performance dialog switch language without changing source data", async () => {
@@ -104,14 +119,14 @@ test("Hebrew player labels and an open performance dialog switch language withou
   ].map(Object.freeze);
   const source = JSON.stringify({ players, plays });
   renderClient.setQueryData(['player-details', 'he-noam'], { games: [] });
-  const showLanguage = async language => act(async () => root.render(
+  const showLanguage = async language => act(async () => renderInEnglish(
     React.createElement(QueryClientProvider, { client: renderClient },
       React.createElement(PreferencesContext.Provider, { value: { language, theme: 'light' } },
         React.createElement(GameDetails, { game, players, events: plays, lineupEvents: [] })))
   ));
   try {
     await showLanguage('he');
-    const box = container.querySelector('.game-panel');
+    const box = container.querySelector('[role="tabpanel"]');
     assert.match(box.textContent, /נועם גרונדלנד/);
     assert.match(box.textContent, /גיא שטורמן/);
     assert.match(box.textContent, /Unknown Player/);
@@ -141,7 +156,7 @@ test("timeline filters periods and overtime and shows an empty period", async ()
   assert.match(container.textContent, /First Player/);
   assert.match(container.textContent, /Assist: Assistant/);
   assert.ok(container.querySelector("table.play-table"));
-  assert.deepEqual([...container.querySelectorAll("thead th")].map(cell => cell.textContent), [game.opponent_name, "", "Afeka"]);
+  assert.deepEqual([...container.querySelectorAll("thead th")].map(cell => cell.textContent), [game.opponent_name, "", "Afeka College"]);
   assert.equal(container.querySelector(".play-card"), null);
   assert.equal(container.querySelector("img"), null);
   assert.ok(container.querySelector('[data-team-side="home"] .play-home'));
@@ -262,7 +277,7 @@ test("momentum tooltip renders the recorded game clock and a plain score dash", 
     } }],
   });
   assert.match(container.textContent, /Q3 2:05/);
-  assert.match(container.textContent, /Afeka 60 - 58 Visitors/);
+  assert.match(container.textContent, /Afeka College 60 - 58 Visitors/);
   assert.doesNotMatch(container.textContent, /\?|elapsed/);
 });
 
@@ -319,7 +334,7 @@ test("player game log lists all stats and opens a centered performance dialog", 
   const stats = { points: 19, rebounds: 8, defensive_rebounds: 6, offensive_rebounds: 2, assists: 4, steals: 2, blocks: 1, turnovers: 3, two_made: 5, two_miss: 2, three_made: 2, three_miss: 3, ft_made: 3, ft_miss: 1 };
   const games = [{ ...stats, game_id: "g1", opponent_name: "Visitors", round_number: 3, shots: [{ type: "TWO_MADE", shot_x: 5, shot_y: 6 }, { type: "THREE_MISS", shot_x: 7, shot_y: 9 }] }, { ...stats, game_id: "g2", opponent_name: "Others", round_number: 4 }];
   try {
-    await act(async () => root.render(React.createElement(QueryClientProvider, { client }, React.createElement(Log, { games }))));
+    await act(async () => renderInEnglish(React.createElement(QueryClientProvider, { client }, React.createElement(Log, { games }))));
     assert.equal(container.querySelectorAll(".player-log-table tbody tr").length, 2);
     assert.equal(container.querySelectorAll('[aria-label="Loss"]').length, 1);
     assert.equal(container.querySelectorAll('[aria-label="Win"]').length, 1);
@@ -421,7 +436,7 @@ test("recorded starters and minutes are shared across box score, player cards an
   const client=new QueryClient({defaultOptions:{queries:{staleTime:Infinity,retry:false}}});
   client.setQueryData(['games'],[detail.game]);client.setQueryData(['game-details','timed'],detail);
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},React.createElement(Provider,null,
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},React.createElement(Provider,null,
       React.createElement(Minutes,{playerId:'1'}),React.createElement(Box,detail),React.createElement(Log,{playerId:'1',games:[{game_id:'timed',opponent_name:'Visitors'}]})
     ))));
     assert.match(container.textContent,/Minutes per game 40:00/);
@@ -459,7 +474,7 @@ test("untracked opponent scoring stays unavailable per game and contributes zero
   client.setQueryData(['game-details', detail.game.id], detail);
   client.setQueryData(['player-details', player.player_id], { games: [] });
   try {
-    await act(async () => root.render(React.createElement(QueryClientProvider, { client }, React.createElement(Provider, null,
+    await act(async () => renderInEnglish(React.createElement(QueryClientProvider, { client }, React.createElement(Provider, null,
       React.createElement(Box, detail), React.createElement(Log, { playerId: player.player_id, player, playerName: player.player_name, games: [{ game_id: detail.game.id }] }), React.createElement(Totals)
     ))));
     assert.equal(container.querySelector('tbody tr').lastElementChild.textContent, '—');
@@ -484,7 +499,7 @@ test("season MPG has a dedicated ranking card with numeric time sorting", async 
     {player_id:'unknown',player_name:'Unknown',gp:1}, {player_id:'third',player_name:'Third',gp:1},
   ]);
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},React.createElement(MinutesContext.Provider,{value:{games:{},averages:{},seasons:{"26/27":{averages:{low:2401,high:2459,third:600}}}}},React.createElement(MemoryRouter,null,React.createElement(Page))))));
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},React.createElement(MinutesContext.Provider,{value:{games:{},averages:{},seasons:{"26/27":{averages:{low:2401,high:2459,third:600}}}}},React.createElement(MemoryRouter,null,React.createElement(Page))))));
     const heading=[...container.querySelectorAll('h2')].find(el=>el.textContent==='Minutes per game');
     const card=heading.parentElement.parentElement.parentElement;
     assert.ok(card.textContent.indexOf('High')<card.textContent.indexOf('Low'));
@@ -511,7 +526,7 @@ test("season plus/minus ranks per-game averages and lists unknown values last", 
     {player_id:'unknown',player_name:'Unknown',gp:1},
   ]);
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},
       React.createElement(MinutesContext.Provider,{value:{games:{},averages:{},seasons:{"26/27":{averages:{},plusMinusTotals:{positive:5,negative:-7,zero:0}}}}},React.createElement(MemoryRouter,null,React.createElement(Page))))));
     const heading = [...container.querySelectorAll('h2')].find(el=>el.textContent==='+/-');
     const card = heading.parentElement.parentElement.parentElement;
@@ -577,7 +592,7 @@ test("season stats fallback is explicit, manual empty season persists and rankin
   client.setQueryData(['season-stats','26/27'],[{player_id:'zero',gp:0}]);
   client.setQueryData(['season-stats','25/26'],[{player_id:'old',player_name:'Previous Player',gp:2,pts:30}]);
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},React.createElement(MemoryRouter,null,React.createElement(Page)))));
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},React.createElement(MemoryRouter,null,React.createElement(Page)))));
     assert.match(container.textContent,/No stats available for 26\/27. Showing 25\/26/);
     assert.match(container.textContent,/Previous Player/);
     assert.equal(container.querySelector('select').value,'25/26');
@@ -603,7 +618,7 @@ test("player page follows team-wide season, filters all summaries and games, and
   client.setQueryData(['player-details','p','25/26'],{player:{id:'p',name:'Identity'},averages:{ppg:12},games:[{game_id:'old',opponent_name:'Past Opponent',two_made:6,two_miss:2,shots:[{type:'TWO_MADE',shot_x:2,shot_y:3}]}]});
   const timing={games:{},averages:{p:9999},seasons:{'26/27':{averages:{}},'25/26':{averages:{p:600}}}};
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},React.createElement(MinutesContext.Provider,{value:timing},React.createElement(MemoryRouter,{initialEntries:['/players/p']},React.createElement(Routes,null,React.createElement(Route,{path:'/players/:playerId',element:React.createElement(Page)})))))));
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},React.createElement(MinutesContext.Provider,{value:timing},React.createElement(MemoryRouter,{initialEntries:['/players/p']},React.createElement(Routes,null,React.createElement(Route,{path:'/players/:playerId',element:React.createElement(Page)})))))));
     assert.match(container.textContent,/Showing season 26\/27/);
     assert.match(container.textContent,/No player stats available for this season/);
     assert.match(container.textContent,/Identity/);assert.doesNotMatch(container.textContent,/Past Opponent|166:39/);
@@ -631,7 +646,95 @@ test("season MPG and plus/minus ignore unavailable timing in another season",asy
   client.setQueryData(['game-details',current.id],{game:current,players:[player],events:[{type:'THREE_MADE',period:1,clock_sec_remaining:500},{type:'PERIOD_END',period:4,clock_sec_remaining:0}],lineupEvents:[{player_id:'p',type:'SUB_IN',period:1,clock_sec_remaining:600}]});
   client.setQueryData(['game-details',previous.id],{game:previous,players:[player],events:[],lineupEvents:[]});
   try {
-    await act(async()=>root.render(React.createElement(QueryClientProvider,{client},React.createElement(Provider,null,React.createElement(Probe)))));
+    await act(async()=>renderInEnglish(React.createElement(QueryClientProvider,{client},React.createElement(Provider,null,React.createElement(Probe)))));
     assert.deepEqual(JSON.parse(container.querySelector('output').textContent),{minutes:2400,plusMinus:3});
   } finally {await act(async()=>root.render(null));client.clear();}
+});
+
+
+test("rebuilt momentum renders one smooth curve, aligned green/orange gradients, and localized periods", async () => {
+  const points = buildMomentumPoints([
+    { type: "THREE_MADE", period: 1, clock_sec_remaining: 500 },
+    { type: "OPP_TWO_MADE", period: 2, clock_sec_remaining: 400 },
+    { type: "OPP_THREE_MADE", period: 3, clock_sec_remaining: 300 },
+    { type: "TWO_MADE", period: 5, clock_sec_remaining: 20 },
+  ]);
+  await render("/src/components/MomentumChart.jsx", { momentumPoints: points, opponentName: "Visitors" });
+  assert.match(container.textContent, /Scoring momentum/);
+  assert.match(container.textContent, /Afeka College/);
+  assert.match(container.textContent, /OT1/);
+  const curves = container.querySelectorAll(".recharts-area-curve");
+  assert.equal(curves.length, 1);
+  assert.match(curves[0].getAttribute("d"), /C/);
+  assert.doesNotMatch(curves[0].getAttribute("d"), /NaN|Infinity/);
+  const gradients = container.querySelectorAll("linearGradient");
+  assert.equal(gradients.length, 2);
+  for (const gradient of gradients) {
+    assert.equal(gradient.getAttribute("gradientUnits"), "userSpaceOnUse");
+    assert.ok(gradient.querySelector('stop[stop-color="var(--momentum-team)"]'));
+    assert.ok(gradient.querySelector('stop[stop-color="var(--momentum-opponent)"]'));
+  }
+  assert.ok(container.querySelector('[role="application"]'));
+});
+
+test("momentum shows an empty state without scoring and retains tied finishes", async () => {
+  await render("/src/components/MomentumChart.jsx", { momentumPoints: buildMomentumPoints([]), opponentName: "Visitors" });
+  assert.match(container.textContent, /No scoring events recorded/);
+  assert.equal(container.querySelector(".recharts-area-curve"), null);
+  await render("/src/components/GameDetails.jsx", { game, players: [], events: [
+    { type: "TWO_MADE", period: 1, clock_sec_remaining: 500 },
+    { type: "OPP_TWO_MADE", period: 1, clock_sec_remaining: 400 },
+  ] });
+  assert.ok(container.querySelector(".momentum-plot"));
+});
+
+test("carried chart endpoint tooltip shows the real scoring clock and Hebrew college name", async () => {
+  const recordedPoint = { period: 4, clockSecRemaining: 14, teamScore: 60, opponentScore: 58, scoreDiff: 2 };
+  const { default: Tooltip } = await vite.ssrLoadModule("/src/components/MomentumTooltip.jsx");
+  await act(async () => root.render(React.createElement(PreferencesContext.Provider, { value: { language: "he", theme: "dark" } },
+    React.createElement(Tooltip, { active: true, opponentName: "Visitors", payload: [{ payload: { ...recordedPoint, clockSecRemaining: 0, recordedPoint } }] }))));
+  assert.match(container.textContent, /0:14/);
+  assert.match(container.textContent, /מכללת אפקה/);
+  assert.equal(container.querySelector(".momentum-tooltip").dir, "rtl");
+});
+
+test("team stats show comparison bars only for available pairs and preserve recorded zero", async () => {
+  await render("/src/components/TeamStats.jsx", {opponentName:"Visitors",stats:{afeka:{points:60,assists:3,rebounds:0,two:{made:5,attempts:10,percentage:50}},opponent:{points:50,assists:2,rebounds:null,two:{made:4,attempts:null,percentage:null}}}});
+  assert.equal(container.querySelector('[data-stat="points"]'),null);
+  const comparison=container.querySelector('[data-stat="assists"]');
+  assert.equal(comparison.querySelectorAll('[aria-hidden="true"] span').length,2);
+  const rebounds=container.querySelector('[data-stat="rebounds"]');
+  assert.match(rebounds.textContent,/0/); assert.match(rebounds.textContent,/—/);
+  assert.equal(rebounds.querySelector('[aria-hidden="true"]'),null);
+  assert.equal(rebounds.querySelector('[title="Not recorded"]').textContent,"—");
+  const shooting = container.querySelector('[data-stat="two"]');
+  assert.match(shooting.textContent,/5\/10/);
+  assert.match(shooting.textContent,/4\/—/);
+  assert.equal(shooting.querySelectorAll('[role="img"]').length,2);
+  assert.equal(shooting.querySelector('circle[pathLength]').getAttribute("stroke-dasharray"),"50 50");
+  assert.equal(shooting.querySelectorAll('circle[pathLength]').length,1,"unknown opponent percentage has no filled ring");
+  assert.equal(container.querySelector('[data-stat="two.attempts"]'),null);
+  assert.ok(comparison.querySelector('.h-2\\.5'),"comparison bars use thicker sizing");
+});
+
+test("game shot map combines player shots, filters makes and misses, and normalizes opponent shots", async () => {
+  const shots=[
+    {type:"TWO_MADE",shot_x:0,shot_y:0,player_remote_id:"one"},
+    {type:"THREE_MISS",shot_x:10,shot_y:5,player_remote_id:"two"},
+    {type:"OPP_THREE_MADE",shot_x:9,shot_y:4},
+    {type:"TWO_MADE",shot_x:null,shot_y:2},
+    {type:"THREE_MADE",shot_x:40,shot_y:5},
+    {type:"FT_MADE",shot_x:7,shot_y:4},
+  ];
+  await render("/src/components/GameShotMap.jsx", {shots,opponentName:"Visitors"});
+  const count=()=>container.querySelectorAll('[style*="left:"]').length;
+  assert.equal(count(),2);
+  const button=label=>[...container.querySelectorAll("button")].find(button=>button.textContent===label);
+  await click(button("Makes"));assert.equal(count(),1);
+  await click(button("Misses"));assert.equal(count(),1);
+  await click(button("Visitors"));assert.equal(count(),1);
+  await click(button("Makes"));assert.equal(count(),1,"opponent makes are drawn as makes");
+  await click(button("Misses"));assert.equal(count(),0);
+  await render("/src/components/GameShotMap.jsx", {shots:[],opponentName:"Visitors"},"no-locations");
+  assert.match(container.textContent,/No shot locations recorded/);
 });

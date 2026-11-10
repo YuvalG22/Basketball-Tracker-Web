@@ -1,3 +1,4 @@
+import GameSummaryLink, { canOpenSummary } from "../components/GameSummaryLink";
 ﻿import { formatGameRound } from "../utils/gameRound";
 import { usePreferences } from "../preferences/context";
 import { Link, useSearchParams } from "react-router-dom";
@@ -28,7 +29,7 @@ export default function HomePage() {
   const recent = (history.data ?? []).filter(item => !item.is_deleted && item.status === "FINISHED" && gameSeason(item) === season)
     .sort((a, b) => Number(b.game_date_epoch) - Number(a.game_date_epoch));
   const game = recent[0] ?? null;
-  const detail = useQuery({ queryKey: ["game-details", String(game?.id)], queryFn: () => getGameDetails(game.id), enabled: Boolean(game) });
+  const detail = useQuery({ queryKey: ["game-details", String(game?.id)], queryFn: () => getGameDetails(game.id), enabled: canOpenSummary(game) });
   const date = value => new Date(Number(value)).toLocaleDateString(language === "he" ? "he-IL" : "en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   const header = <div className="flex flex-wrap items-end justify-between gap-4">
@@ -67,7 +68,7 @@ export default function HomePage() {
 
     <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       <div className="min-w-0 space-y-5">
-        <Link to={`/games/${game.id}`} className="home-scorecard group block overflow-hidden rounded-[24px] border border-line bg-surface transition hover:border-accent">
+        <GameSummaryLink game={game} className="home-scorecard group block overflow-hidden rounded-[24px] border border-line bg-surface transition hover:border-accent">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-7 sm:pt-6">
             <h2 className="text-xs font-bold tracking-wide text-accent">{t("LAST GAME")}</h2>
             <span className={`rounded-full px-3 py-1 text-xs font-bold text-white ${resultClass(result)}`}>{t(resultKey(result))}</span>
@@ -80,12 +81,12 @@ export default function HomePage() {
             <div className="text-center"><div className="home-score-numbers"><span>{homeTeam.score}</span><span className="home-score-dash" aria-hidden="true">–</span><span>{awayTeam.score}</span></div><div className="mt-2 text-[11px] font-semibold tracking-wide text-muted">{t("FINAL")}</div></div>
             <ScoreTeam team={awayTeam} winner={awayTeam.score > homeTeam.score} />
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4 text-sm font-semibold text-accent sm:px-7"><span>{t("Open game summary")}</span><ForwardArrow /></div>
-        </Link>
+          <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4 text-sm font-semibold text-accent sm:px-7">{canOpenSummary(game) && <><span>{t("Open game summary")}</span><ForwardArrow /></>}</div>
+        </GameSummaryLink>
 
         <section className="rounded-[24px] border border-line bg-surface p-4 sm:p-5" aria-label={t("Last game leaders")}>
           <h2 className="mb-4 text-lg font-bold">{t("Last game leaders")}</h2>
-          {detail.isPending ? <p role="status" className="py-4 text-sm text-muted">{t("Loading...")}</p> : detail.isError ? <p className="text-sm text-muted">{t("Unable to load data. Please try again.")} <button className="underline" onClick={() => detail.refetch()}>{t("Retry")}</button></p> : detail.data?.players?.length ? <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {!canOpenSummary(game) ? <p className="text-sm text-muted">{t("No stats available")}</p> : detail.isPending ? <p role="status" className="py-4 text-sm text-muted">{t("Loading...")}</p> : detail.isError ? <p className="text-sm text-muted">{t("Unable to load data. Please try again.")} <button className="underline" onClick={() => detail.refetch()}>{t("Retry")}</button></p> : detail.data?.players?.length ? <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[["Points", "points"], ["Rebounds", "rebounds"], ["Assists", "assists"]].map(([label, field]) => {
               const leader = [...detail.data.players].sort((a, b) => Number(b[field] ?? 0) - Number(a[field] ?? 0))[0];
               return <Link key={field} to={`/players/${leader.player_id}`} className="rounded-2xl bg-raised p-3 transition hover:ring-1 hover:ring-accent">
@@ -101,11 +102,11 @@ export default function HomePage() {
       <section className="min-w-0 rounded-[24px] border border-line bg-surface p-4 sm:p-5" aria-label={t("Recent games")}>
         <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{t("Recent games")}</h2><Link to={gamesLink} className="inline-flex min-h-11 items-center text-xs font-semibold text-accent">{t("View all games")}<ForwardArrow /></Link></div>
         {recent.length > 0 && <div className="mb-3 flex items-center justify-between gap-2 border-b border-line pb-4"><span className="text-xs text-muted">{t("Last 5")}</span><div className="flex gap-1.5" dir="ltr">{recent.slice(0, 5).reverse().map(item => <span key={item.id} title={`${teamName(item.opponent_name)}: ${item.team_score}-${item.opponent_score}`} aria-label={t(resultKey(resultOf(item)))} className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${resultClass(resultOf(item))}`}>{resultOf(item)}</span>)}</div></div>}
-        <div className="text-[10px] text-end text-muted">{t("Afeka – opponent")}</div>
-        <ul className="divide-y divide-line">{recent.slice(0, 5).map(item => <li key={item.id}><Link to={`/games/${item.id}`} className="flex min-w-0 items-center justify-between gap-3 rounded-xl py-3 transition hover:bg-raised">
+        <div className="text-[10px] text-end text-muted">{t("Afeka College – opponent")}</div>
+        <ul className="divide-y divide-line">{recent.slice(0, 5).map(item => <li key={item.id}><GameSummaryLink game={item} className="flex min-w-0 items-center justify-between gap-3 rounded-xl py-3 transition hover:bg-raised">
           <div className="flex min-w-0 items-center gap-2"><TeamLogo name={item.opponent_name} className="h-8 w-8" /><div className="min-w-0"><div className="break-words text-sm font-semibold">{teamName(item.opponent_name)}</div><div className="mt-1 text-[11px] text-muted">{formatGameRound(item, t)}</div><div className="mt-0.5 text-[11px] text-muted">{date(item.game_date_epoch)}</div></div></div>
           <div className="shrink-0 text-end"><div dir="ltr" className="whitespace-nowrap text-sm font-bold tabular-nums">{item.team_score}–{item.opponent_score}</div><span className={`mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${resultClass(resultOf(item))}`}>{resultOf(item)}</span></div>
-        </Link></li>)}</ul>
+        </GameSummaryLink></li>)}</ul>
         {history.isPending && <p role="status" className="py-4 text-sm text-muted">{t("Loading...")}</p>}
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-4"><Link to="/season" className="flex min-h-11 items-center justify-center rounded-xl bg-raised px-2 text-center text-xs font-semibold">{t("Season Stats")}</Link><Link to="/players" className="flex min-h-11 items-center justify-center rounded-xl bg-raised px-2 text-center text-xs font-semibold">{t("Players")}</Link></div>
       </section>

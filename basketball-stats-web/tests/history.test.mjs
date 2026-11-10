@@ -15,7 +15,7 @@ before(async () => {
 after(async () => { await vite?.close(); });
 
 const game = {
-  id: "finished", status: "FINISHED", is_home_game: false,
+  id: "finished", status: "FINISHED", has_events: true, is_home_game: false,
   opponent_name: "Opponents", team_score: "9", opponent_score: "10",
   round_number: 2, game_date_epoch: "1793484000000", quarters_count: 4,
   quarter_length_sec: 600,
@@ -29,6 +29,7 @@ const player = {
 
 async function renderPage(module, route, url, key, data, extraQueries = []) {
   const { default: Page } = await vite.ssrLoadModule(module);
+  const { PreferencesContext } = await vite.ssrLoadModule("/src/preferences/context.js");
   const client = new QueryClient({ defaultOptions: { queries: historicalQueryOptions } });
   if (module.includes("PlayerDetailsPage") || module.includes("SeasonStatsPage")) {
     client.setQueryData(["season-stats","26/27"], [{player_id:"team",gp:1}]);
@@ -41,7 +42,7 @@ async function renderPage(module, route, url, key, data, extraQueries = []) {
     return renderToStaticMarkup(React.createElement(QueryClientProvider, { client },
       React.createElement(MemoryRouter, { initialEntries: [url] },
         React.createElement(Routes, null,
-          React.createElement(Route, { path: route, element: React.createElement(Page) })))));
+          React.createElement(Route, { path: route, element: React.createElement(PreferencesContext.Provider, { value: { language: "en", theme: "light" } }, React.createElement(Page)) })))));
   } finally { client.clear(); }
 }
 
@@ -253,4 +254,12 @@ test("season APIs send filters and preserve unfiltered historical player lookups
     await getSeasonStats('26/27');await getPlayerDetails('p','25/26');await getPlayerDetails('p');
     assert.deepEqual(calls,[{url:'/stats/season',season:'26/27'},{url:'/players/p',season:'25/26'},{url:'/players/p',season:undefined}]);
   } finally {apiClient.defaults.adapter=original;}
+});
+
+test("eventless home results and direct URLs cannot open empty summaries", async () => {
+  const empty={...game,has_events:false,season:"26/27"};
+  const home=await renderPage("/src/pages/HomePage.jsx","/","/",["games"],[empty]);
+  assert.match(home,/No stats available/); assert.doesNotMatch(home,/href="\/games\/finished"/);
+  const summary=await renderPage("/src/pages/GameDetailsPage.jsx","/games/:gameId","/games/finished",["game-details","finished"],{game:empty,events:[],players:[]});
+  assert.match(summary,/No stats available/); assert.match(summary,/Back to games/); assert.doesNotMatch(summary,/role="tablist"/);
 });

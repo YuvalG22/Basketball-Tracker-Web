@@ -11,13 +11,14 @@ let vite;
 before(async () => { vite = await createServer({server:{middlewareMode:true}, appType:"custom"}); });
 after(async () => { await vite?.close(); });
 const fixture = {id:"fixture", status:"SCHEDULED", season:"26/27", opponent_name:"Future opponent", round_number:1, is_home_game:true, game_date_epoch:Date.parse("2026-11-26T00:00:00+02:00")};
-const legacy = {...fixture, id:"legacy", status:"FINISHED", season:undefined, opponent_name:"Legacy opponent", team_score:12, opponent_score:10};
+const legacy = {...fixture, id:"legacy", status:"FINISHED",has_events:true, season:undefined, opponent_name:"Legacy opponent", team_score:12, opponent_score:10};
 const live = {...fixture, id:"live", status:"LIVE", opponent_name:"Live opponent", team_score:3, opponent_score:5, is_home_game:false};
 const games = [fixture,legacy,live];
 async function render(url, data=games) {
   const {default:Page} = await vite.ssrLoadModule("/src/pages/GamesPage.jsx");
+  const { PreferencesContext } = await vite.ssrLoadModule("/src/preferences/context.js");
   const client = new QueryClient(); client.setQueryData(["schedule-games"], data);
-  try { return renderToStaticMarkup(React.createElement(QueryClientProvider,{client},React.createElement(MemoryRouter,{initialEntries:[url]},React.createElement(Page)))); }
+  try { return renderToStaticMarkup(React.createElement(QueryClientProvider,{client},React.createElement(MemoryRouter,{initialEntries:[url]},React.createElement(PreferencesContext.Provider,{value:{language:"en",theme:"light"}},React.createElement(Page))))); }
   finally { client.clear(); }
 }
 test("seasons include current and legacy; filtering excludes deleted games and orders by date", () => {
@@ -65,4 +66,10 @@ test("already imported Hebrew opponents display in English on the English Games 
   const html = await render("/games", [{...fixture,opponent_name:"המרכז האקדמי לוינסקי וינגייט"}]);
   assert.match(html, /Levinsky-Wingate Academic Center/);
   assert.doesNotMatch(html, /[\u0590-\u05ff]/);
+});
+
+test("eventless results remain visible without summary links", async () => {
+  const html = await render("/games?season=all", [{...legacy,has_events:false}]);
+  assert.match(html,/Legacy opponent/); assert.match(html,/No stats available/);
+  assert.doesNotMatch(html,/href="\/games\/legacy"/);
 });

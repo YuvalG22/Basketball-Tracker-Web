@@ -8,13 +8,15 @@ export default function MomentumTooltip({
 }) {
   const {
     t,
+    language,
     teamName
   } = usePreferences();
-  const point = payload?.[0]?.payload;
+  const sample = payload?.[0]?.payload;
+  const point = sample?.recordedPoint ?? sample;
   if (!active || !point) return null;
-  return <div className="rounded-lg border border-line bg-surface p-2 text-xs">
+  return <div dir={language === "he" ? "rtl" : "ltr"} className="momentum-tooltip rounded-xl border border-line bg-surface p-3 text-xs shadow-xl">
     <p>{t(gameClockLabel(point.period, point.clockSecRemaining, regulationPeriods))}</p>
     <p dir="ltr">{teamName("Afeka")}{" "}{point.teamScore} - {point.opponentScore} {teamName(opponentName)}</p>
-    <p>{t("Lead:")}{" "}{Math.abs(point.scoreDiff)} {point.scoreDiff > 0 ? t("Afeka") : point.scoreDiff < 0 ? teamName(opponentName) : t("(tied)")}</p>
+    <p>{t("Lead:")}{" "}{Math.abs(point.scoreDiff)} {point.scoreDiff > 0 ? teamName("Afeka") : point.scoreDiff < 0 ? teamName(opponentName) : t("(tied)")}</p>
   </div>;
 }

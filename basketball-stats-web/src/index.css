@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 @font-face {
+  font-family: Heebo;
+  src: url("/fonts/heebo_variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
   font-family: Inter;
   src: url("/fonts/inter_regular.ttf") format("truetype");
   font-weight: 400;
@@ -111,18 +119,18 @@ button:not(:disabled), a {
 :root { color-scheme: light; }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-background: #0b1220;
-  --color-surface: #152137;
-  --color-raised: #20314d;
-  --color-line: #3b4e6c;
-  --color-ink: #edf3ff;
-  --color-muted: #b0c1dc;
-  --color-accent: #8cbaff;
-  --color-orange: #ffb875;
+  --color-background: #090909;
+  --color-surface: #141414;
+  --color-raised: #202020;
+  --color-line: #363636;
+  --color-ink: #f2f2f2;
+  --color-muted: #adadad;
+  --color-accent: #c4c4c4;
+  --color-orange: #e5a362;
   --color-success: #147b4c;
   --color-danger: #b82d48;
 }
-:root[lang="he"] { --font-sans: Arial, "Noto Sans Hebrew", sans-serif; }
+:root[lang="he"] { --font-sans: Heebo, Arial, sans-serif; }
 [lang="he"] .tracking-\[0\.15em\] { letter-spacing: normal; }
 select { max-width: 100%; }
 [dir="rtl"] .stats-drawer { inset-inline-start: auto; inset-inline-end: 0; }
@@ -131,7 +139,7 @@ select { max-width: 100%; }
 }
 .play-score, .tabular-nums { direction: ltr; unicode-bidi: isolate; }
 .recharts-wrapper { direction: ltr; }
-[data-theme="dark"] .bg-accent.text-white { color: #0b1220; }
+[data-theme="dark"] .bg-accent.text-white { color: var(--color-background); }
 .stats-card-dialog {
   inset: 0;
   margin: auto;
@@ -175,8 +183,37 @@ select { max-width: 100%; }
   .games-list-meta { grid-column: auto; display: flex; flex-direction: column; align-items: start; gap: 4px; }
 }
 .home-scorecard { background-image: radial-gradient(ellipse at 50% 5%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%); }
-.home-scoreboard { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 32px 16px; }
+.home-scoreboard { max-width: 36rem; margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 32px 16px; }
 .home-scoreboard > div:first-child, .home-scoreboard > div:last-child { overflow-wrap: anywhere; font-size: 13px; }
 .home-score-numbers { display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; font-size: clamp(36px, 5vw, 64px); font-weight: 900; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .home-score-dash { color: var(--color-muted); font-size: .5em; font-weight: 400; }
 @media (min-width: 640px) { .home-scoreboard { gap: 20px; padding: 40px 24px; } .home-scoreboard > div:first-child, .home-scoreboard > div:last-child { font-size: 15px; } }
+
+.momentum-chart { --momentum-team: #15803d; --momentum-opponent: #c44f08; }
+[data-theme="dark"] .momentum-chart { --momentum-team: #4ade80; --momentum-opponent: #e5a362; }
+.momentum-plot { height: 240px; }
+.momentum-team-dot, .momentum-opponent-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.momentum-team-dot { background: var(--momentum-team); }
+.momentum-opponent-dot { background: var(--momentum-opponent); }
+.momentum-tooltip { max-width: min(280px, 75vw); line-height: 1.7; }
+@media (min-width: 640px) { .momentum-plot { height: 280px; } }
+
+.team-stats { --momentum-team: #15803d; --momentum-opponent: #c44f08; }
+[data-theme="dark"] .team-stats { --momentum-team: #4ade80; --momentum-opponent: #e5a362; }
+.team-stats-afeka { color: var(--momentum-team); }
+.team-stats-opponent { color: var(--momentum-opponent); }
+.team-stats-bar-afeka { background: var(--momentum-team); }
+.team-stats-bar-opponent { background: var(--momentum-opponent); }
+
+.shooting-donut { position: relative; width: 76px; height: 76px; flex-shrink: 0; }
+.shooting-donut svg { display: block; width: 100%; height: 100%; }
+.shooting-donut-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+@media (min-width: 640px) { .shooting-donut { width: 88px; height: 88px; } .shooting-donut-label { font-size: 15px; } }
+
+.box-score-points { color: #165ddb; }
+[data-theme="dark"] .box-score-points { color: #8cbaff; }
+
+.play-score-afeka { color: #15803d; font-weight: 800; }
+.play-score-opponent { color: #c44f08; font-weight: 800; }
+[data-theme="dark"] .play-score-afeka { color: #4ade80; }
+[data-theme="dark"] .play-score-opponent { color: #e5a362; }

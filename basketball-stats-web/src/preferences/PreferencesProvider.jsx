@@ -1,3 +1,4 @@
+import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames";
 import { useEffect, useState } from "react";
 import { PreferencesContext } from "./context";
 function read(key, allowed, fallback) {
@@ -16,7 +17,7 @@ export default function PreferencesProvider({
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "he" ? "rtl" : "ltr";
-    document.title = language === "he" ? "אפקה כדורסל" : "Afeka Basketball";
+    document.title = language === "he" ? `${AFEKA_NAME_HE} כדורסל` : `${AFEKA_NAME_EN} Basketball`;
     try {
       localStorage.setItem("basketball-language", language);
     } catch {/* Storage is optional. */}

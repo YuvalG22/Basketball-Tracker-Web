@@ -43,6 +43,9 @@ export default function PlayByPlay({
             const marker = event.type === "PERIOD_START" || event.type === "PERIOD_END";
             const opponent = event.type.startsWith("OPP_");
             const homeSide = opponent ? !game.is_home_game : game.is_home_game;
+            const scores = scoreLabel(event, game.is_home_game).split(" \u2013 ");
+            const basket = /^(OPP_)?(TWO|THREE|FT)_MADE$/.test(event.type);
+            const scoringColor = opponent ? "play-score-opponent" : "play-score-afeka";
             const seconds = Math.max(0, Number(event.clock_sec_remaining) || 0);
             const assistName = playerName(assistingPlayer(event, players));
             const action = <>
@@ -53,7 +56,7 @@ export default function PlayByPlay({
             return marker ? <tr key={event.id ?? index} className="play-period"><td colSpan={3}>{event.type === "PERIOD_START" ? t("START") : t("END")} {t(label)}</td></tr> : <tr key={event.id ?? index} data-team-side={homeSide ? t("home") : t("away")}>
                     <td className="play-home" dir={language === "he" ? "rtl" : "ltr"}>{homeSide ? action : null}</td>
                     <td className="play-score">
-                      <span aria-label={t("Score")}>{scoreLabel(event, game.is_home_game)}</span>
+                      <span aria-label={t("Score")}>{scores.length === 2 ? <><span className={basket && homeSide ? scoringColor : undefined}>{scores[0]}</span>{" \u2013 "}<span className={basket && !homeSide ? scoringColor : undefined}>{scores[1]}</span></> : scores[0]}</span>
                       <span className="play-clock">{t(label)} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
                     </td>
                     <td className="play-away" dir={language === "he" ? "rtl" : "ltr"}>{!homeSide ? action : null}</td>

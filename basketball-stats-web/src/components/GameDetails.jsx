@@ -1,20 +1,30 @@
+import GameShotMap from "./GameShotMap";
+import { useId, useState } from "react";
+import TeamStats from "./TeamStats";
 import { formatGameRound } from "../utils/gameRound";
 import { usePreferences } from "../preferences/context";
-import { Area, YAxis, XAxis, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart } from "recharts";
 import TeamLogo from "./TeamLogo";
 import BoxScore from "./BoxScore";
 import PlayByPlay from "./PlayByPlay";
-import MomentumTooltip from "./MomentumTooltip";
-import { getPeriodScores, buildMomentumPoints, momentumAxisClock } from "../utils/gameStats";
-export default function GameStatsView({
+import MomentumChart from "./MomentumChart";
+import { getPeriodScores, buildMomentumPoints } from "../utils/gameStats";
+export default function GameStatsView(props) {
+  return <GameStatsContent key={props.game.id} {...props} />;
+}
+function GameStatsContent({
   game,
   players = [],
   events = [],
+  teamStats,
+  shots = [],
   lineupEvents = []
 }) {
   const {
     t
   } = usePreferences();
+  const [activeTab, setActiveTab] = useState("box");
+  const tabId = useId();
+  const tabs = [["box", "Box Score"], ["pbp", "Play by Play"], ["team", "Team Stats"], ["shots", "Shot map"]];
   const momentumPoints = buildMomentumPoints(events, game.quarter_length_sec);
   const teamScore = Number(game.team_score ?? 0);
   const opponentScore = Number(game.opponent_score ?? 0);
@@ -25,13 +35,21 @@ export default function GameStatsView({
   const periodScores = getPeriodScores(events, game.is_home_game, game.quarters_count);
   return <section className="space-y-5">
       <GameHeader game={game} homeTeamName={homeTeamName} awayTeamName={awayTeamName} homeScore={homeScore} awayScore={awayScore} periodScores={periodScores} momentumPoints={momentumPoints} />
-      <div className="game-panels">
-        <div className="game-panel" role="region" aria-label={t("Box Score")}>
-          <BoxScore game={game} players={players} events={events} lineupEvents={lineupEvents} />
+      <div>
+        <div role="tablist" aria-label={t("Game statistics")} className="mb-4 flex gap-1 overflow-x-auto border-b border-line sm:gap-2" onKeyDown={event => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const direction = document.documentElement.dir === "rtl" ? -1 : 1;
+          const index = tabs.findIndex(([key]) => key === activeTab);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? direction : -direction) + tabs.length) % tabs.length;
+          setActiveTab(tabs[next][0]);
+          document.getElementById(`${tabId}-${tabs[next][0]}`)?.focus();
+        }}>
+          {tabs.map(([key, label]) => <button key={key} id={`${tabId}-${key}`} role="tab" aria-selected={activeTab === key} aria-controls={`${tabId}-${key}-panel`} tabIndex={activeTab === key ? 0 : -1} onClick={() => setActiveTab(key)} className={`min-h-11 shrink-0 border-b-2 px-3 text-sm font-semibold ${activeTab === key ? "border-accent text-accent" : "border-transparent text-muted"}`}>{t(label)}</button>)}
         </div>
-        <div className="game-panel" role="region" aria-label={t("Play by Play timeline")}>
-          <PlayByPlay events={events} game={game} players={players} />
-        </div>
+        {tabs.map(([key]) => <div key={key} id={`${tabId}-${key}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${key}`} hidden={activeTab !== key} tabIndex={0}>
+          {key === "box" ? <BoxScore game={game} players={players} events={events} lineupEvents={lineupEvents} /> : key === "pbp" ? <PlayByPlay events={events} game={game} players={players} /> : key === "team" ? <TeamStats stats={teamStats} opponentName={game.opponent_name} /> : <GameShotMap shots={shots} opponentName={game.opponent_name} />}
+        </div>)}
       </div>
     </section>;
 }
@@ -52,7 +70,6 @@ function GameHeader({
   const scoreColumns = {
     gridTemplateColumns: `minmax(5rem, 1.5fr) repeat(${periodScores.length + 1}, minmax(2.5rem, 1fr))`
   };
-  const canShowMomentum = momentumPoints.length > 0 && momentumPoints.some(p => p.scoreDiff !== 0);
   return <div className="rounded-[20px] bg-surface p-4">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <div className="rounded-full bg-raised px-3 py-1 text-xs font-bold text-muted">{t("FINAL")}
@@ -68,8 +85,8 @@ function GameHeader({
         })}`}
         </div>
       </div>
-      <div dir="ltr" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
-        <HeaderTeam name={homeTeamName} align="left" />
+      <div dir="ltr" className="mx-auto grid w-full max-w-xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+        <HeaderTeam name={homeTeamName} />
 
         <div className="text-center">
           <div dir="ltr" className="whitespace-nowrap text-2xl font-black tracking-tight text-ink sm:text-4xl">
@@ -83,11 +100,11 @@ function GameHeader({
           </div>
         </div>
 
-        <HeaderTeam name={awayTeamName} align="right" />
+        <HeaderTeam name={awayTeamName} />
       </div>
-      {canShowMomentum && <div className="mt-4">
-          <MomentumAreaChart momentumPoints={momentumPoints} opponentName={game.opponent_name} periodLength={game.quarter_length_sec} regulationPeriods={regulationPeriods} />
-        </div>}
+      <div className="mt-4">
+          <MomentumChart momentumPoints={momentumPoints} opponentName={game.opponent_name} periodLength={game.quarter_length_sec} regulationPeriods={regulationPeriods} recordedPeriods={periodScores.length} />
+        </div>
       <div className="mt-6 overflow-x-auto rounded-2xl bg-raised p-3">
         <div className="grid gap-2 text-center text-xs text-muted" style={scoreColumns}>
           <div></div>
@@ -131,59 +148,13 @@ function GameHeader({
       </div>
     </div>;
 }
-function MomentumAreaChart({
-  momentumPoints,
-  opponentName,
-  periodLength = 600,
-  regulationPeriods = 4
-}) {
-  const {
-    t,
-    teamName
-  } = usePreferences();
-  const data = momentumPoints.map(p => ({
-    ...p,
-    positiveDiff: p.scoreDiff > 0 ? p.scoreDiff : 0,
-    negativeDiff: p.scoreDiff < 0 ? p.scoreDiff : 0
-  }));
-  const maxAbs = Math.max(1, ...data.map(d => Math.abs(d.scoreDiff)));
-  return <div className="w-full rounded-2xl bg-raised p-3">
-      <p className="mb-2 text-xs text-muted">{t("Lead from recorded scoring events")}</p>
-      <div className="mb-2 flex flex-wrap justify-between gap-2 text-xs font-semibold"><span className="text-accent">{t("Afeka lead")}</span><span className="text-orange">{teamName(opponentName)}{" "}{t("lead")}</span></div>
-      <div dir="ltr" className="h-44" role="img" aria-label={t("Scoring momentum: Afeka score minus opponent score by period and game clock")}>
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{
-        width: 320,
-        height: 176
-      }}>
-        <AreaChart data={data}>
-          <XAxis dataKey="gameSecond" type="number" domain={[0, "dataMax"]} tickFormatter={value => t(momentumAxisClock(value, periodLength, regulationPeriods, Math.max(...data.map(point => point.period))))} tick={{
-            fontSize: 10
-          }} minTickGap={32} />
-          <Tooltip content={<MomentumTooltip opponentName={opponentName} regulationPeriods={regulationPeriods} />} />
-          <YAxis width={24} domain={[-maxAbs, maxAbs]} ticks={[-maxAbs, 0, maxAbs]} axisLine={false} tickLine={false} padding={{
-            top: 10,
-            bottom: 10
-          }} tickFormatter={value => Math.abs(value)} />
-
-          <ReferenceLine y={0} stroke="var(--color-muted)" />
-          <Area type="stepAfter" isAnimationActive={false} dataKey="positiveDiff" stroke="var(--color-accent)" fill="var(--color-accent)" fillOpacity={0.8} dot={false} connectNulls activeDot={false} />
-
-
-          <Area type="stepAfter" isAnimationActive={false} dataKey="negativeDiff" stroke="var(--color-orange)" fill="var(--color-orange)" fillOpacity={0.8} dot={false} connectNulls activeDot={false} />
-
-        </AreaChart>
-      </ResponsiveContainer>
-      </div>
-    </div>;
-}
 function HeaderTeam({
-  name,
-  align
+  name
 }) {
   const {
     teamName
   } = usePreferences();
-  return <div className={`flex flex-col items-center ${align === "right" ? "justify-self-end" : "justify-self-start"}`}>
+  return <div className="flex min-w-0 flex-col items-center justify-self-center">
 
       <TeamLogo name={name} className="h-14 w-14 sm:h-20 sm:w-20" />
 

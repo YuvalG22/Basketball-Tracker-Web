@@ -1,9 +1,10 @@
+import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames";
 // Initial league order supplied for the standings. Results will be added later.
 export const leagueStandings = [
   { id: "runi", nameEn: "Reichman University", nameHe: "אוניברסיטת רייכמן", logoName: "Reichman" },
   { id: "colman", nameEn: "College of Management Academic Studies", nameHe: "המסלול האקדמי המכללה למינהל", logoName: "College of Management" },
   { id: "tau", nameEn: "Tel Aviv University", nameHe: "אוניברסיטת תל-אביב", logoName: "Tel Aviv University" },
-  { id: "afeka", nameEn: "Afeka – Tel Aviv Academic College of Engineering", nameHe: "אפקה - המכללה האקדמית להנדסה בתל-אביב", logoName: "Afeka" },
+  { id: "afeka", nameEn: AFEKA_NAME_EN, nameHe: AFEKA_NAME_HE, logoName: "Afeka" },
   { id: "hit", nameEn: "Holon Institute of Technology", nameHe: "מכון טכנולוגי חולון", logoName: "HIT" },
   { id: "ariel", nameEn: "Ariel Student Association", nameHe: "אגודת הסטודנטים אריאל", logoName: "Ariel" },
   { id: "wingate", nameEn: "Levinsky–Wingate Academic Center", nameHe: "המרכז האקדמי לוינסקי וינגייט", logoName: "Wingate" },

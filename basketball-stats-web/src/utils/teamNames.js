@@ -1,4 +1,6 @@
-import { findTeam } from "./teamLogos";
+import { findTeam } from "./teamLogos.js";
+export const AFEKA_NAME_EN = "Afeka College";
+export const AFEKA_NAME_HE = "מכללת אפקה";
 const englishNames = {
   "wingate": "Levinsky-Wingate Academic Center",
   "biu": "Bar-Ilan University",
@@ -9,8 +11,9 @@ const englishNames = {
   "runi": "Reichman University",
   "tau": "Tel Aviv University",
   "hit": "Holon Institute of Technology",
-  "afeka": "Afeka"
+  "afeka": AFEKA_NAME_EN
 };
 export function englishTeamName(name) {
+  if (findTeam(name)?.id === "afeka") return AFEKA_NAME_EN;
   return /[\u0590-\u05ff]/.test(name ?? "") ? englishNames[findTeam(name)?.id] ?? name : name;
 }

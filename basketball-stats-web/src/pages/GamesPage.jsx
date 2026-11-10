@@ -1,3 +1,4 @@
+import { canOpenSummary } from "../components/GameSummaryLink";
 import { formatGameRound } from "../utils/gameRound";
 import { usePreferences } from "../preferences/context";
 import { useQuery } from "@tanstack/react-query";
@@ -57,8 +58,8 @@ export default function GamesPage() {
               : <span className="shrink-0 rounded-full bg-raised px-2 py-1 text-xs font-medium text-muted">{t(scheduled ? "Scheduled" : "Live")}</span>}
           </>;
           return <li key={game.id} className="border-b border-line last:border-b-0">
-            {finished ? <Link to={`/games/${game.id}`} className="games-list-row transition hover:bg-raised focus-visible:bg-raised">{row}</Link>
-              : <div className="games-list-row">{row}</div>}
+            {canOpenSummary(game) ? <Link to={`/games/${game.id}`} className="games-list-row transition hover:bg-raised focus-visible:bg-raised">{row}</Link>
+              : <div className="games-list-row">{row}{finished && <span className="text-xs text-muted">{t("No stats available")}</span>}</div>}
           </li>;
         })}
       </ul>
