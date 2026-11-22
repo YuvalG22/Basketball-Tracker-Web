@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createServer } from "vite";
-import { availableSeasons, seasonGames } from "../src/utils/schedule.js";
+import { availableSeasons, seasonGames, scheduledGameTime } from "../src/utils/schedule.js";
 import { completedGames } from "../src/utils/gameStats.js";
 let vite;
 before(async () => { vite = await createServer({server:{middlewareMode:true}, appType:"custom"}); });
@@ -72,4 +72,19 @@ test("eventless results remain visible without summary links", async () => {
   const html = await render("/games?season=all", [{...legacy,has_events:false}]);
   assert.match(html,/Legacy opponent/); assert.match(html,/No stats available/);
   assert.doesNotMatch(html,/href="\/games\/legacy"/);
+});
+
+test("updated fixtures show published Jerusalem start times and hide unknown midnight placeholders", async () => {
+  const updated = { ...fixture, game_date_epoch: Date.parse('2026-11-27T10:45:00+02:00') };
+  const evening = { ...fixture, id:'evening', round_number:2, game_date_epoch: Date.parse('2026-12-03T21:00:00+02:00') };
+  assert.equal(scheduledGameTime(updated), '10:45');
+  assert.equal(scheduledGameTime(evening), '21:00');
+  assert.equal(scheduledGameTime(fixture), null);
+  assert.equal(scheduledGameTime({ ...updated, status:'FINISHED' }), null);
+  assert.equal(scheduledGameTime({ ...updated, game_date_epoch:'invalid' }), null);
+  const html = await render('/games', [updated, evening, {...fixture,id:'unknown'}]);
+  assert.match(html, /27[/.]11[/.]2026/);
+  assert.match(html, /dateTime="10:45"/i);
+  assert.match(html, /dateTime="21:00"/i);
+  assert.doesNotMatch(html, /00:00/);
 });

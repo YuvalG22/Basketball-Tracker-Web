@@ -18,7 +18,10 @@ export default function PlayByPlay({
     length: regulation
   }, (_, index) => index + 1), ...events.map(event => Number(event.period)).filter(value => value > 0)])].sort((a, b) => a - b);
   const visible = filterPlays(events, period);
-  return <section className="overflow-hidden rounded-[20px] bg-surface" aria-label={t("Play by Play")}>
+  return <section className="play-by-play overflow-hidden rounded-[20px] bg-surface" aria-label={t("Play by Play")} style={{
+    "--play-home": game.is_home_game ? "var(--momentum-team)" : "var(--momentum-opponent)",
+    "--play-away": game.is_home_game ? "var(--momentum-opponent)" : "var(--momentum-team)"
+  }}>
       <header className="border-b border-line p-4">
         <h2 className="text-xl font-bold">{t("Play by Play")}</h2>
         <p className="mt-1 text-xs text-muted">{t("Scores shown as home \u2013 away")}</p>
@@ -33,7 +36,7 @@ export default function PlayByPlay({
             <caption className="sr-only">{t("Recorded plays, home team on the left and away team on the right")}</caption>
             <colgroup><col /><col className="play-score-column" /><col /></colgroup>
             <thead><tr>
-              <th scope="col">{teamName(game.is_home_game ? "Afeka" : game.opponent_name)}</th>
+              <th scope="col" className="play-home-heading">{teamName(game.is_home_game ? "Afeka" : game.opponent_name)}</th>
               <th scope="col" className="play-score" aria-label={t("Score / Time")} />
               <th scope="col" className="play-away-heading">{teamName(game.is_home_game ? game.opponent_name : "Afeka")}</th>
             </tr></thead>
@@ -54,12 +57,12 @@ export default function PlayByPlay({
                   <span className="play-assist">{assistName ? <>{t("Assist:")}{" "}<span className="font-medium">{assistName}</span></> : "\u00a0"}</span>
                 </>;
             return marker ? <tr key={event.id ?? index} className="play-period"><td colSpan={3}>{event.type === "PERIOD_START" ? t("START") : t("END")} {t(label)}</td></tr> : <tr key={event.id ?? index} data-team-side={homeSide ? t("home") : t("away")}>
-                    <td className="play-home" dir={language === "he" ? "rtl" : "ltr"}>{homeSide ? action : null}</td>
+                    <td className={`play-home ${homeSide ? "play-active" : ""}`} dir={language === "he" ? "rtl" : "ltr"}>{homeSide ? action : null}</td>
                     <td className="play-score">
                       <span aria-label={t("Score")}>{scores.length === 2 ? <><span className={basket && homeSide ? scoringColor : undefined}>{scores[0]}</span>{" \u2013 "}<span className={basket && !homeSide ? scoringColor : undefined}>{scores[1]}</span></> : scores[0]}</span>
                       <span className="play-clock">{t(label)} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
                     </td>
-                    <td className="play-away" dir={language === "he" ? "rtl" : "ltr"}>{!homeSide ? action : null}</td>
+                    <td className={`play-away ${!homeSide ? "play-active" : ""}`} dir={language === "he" ? "rtl" : "ltr"}>{!homeSide ? action : null}</td>
                   </tr>;
           })}
             </tbody>

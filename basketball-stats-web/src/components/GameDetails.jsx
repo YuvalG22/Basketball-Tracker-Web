@@ -7,6 +7,7 @@ import TeamLogo from "./TeamLogo";
 import BoxScore from "./BoxScore";
 import PlayByPlay from "./PlayByPlay";
 import MomentumChart from "./MomentumChart";
+import QuarterScores from "./QuarterScores";
 import { getPeriodScores, buildMomentumPoints } from "../utils/gameStats";
 export default function GameStatsView(props) {
   return <GameStatsContent key={props.game.id} {...props} />;
@@ -19,9 +20,7 @@ function GameStatsContent({
   shots = [],
   lineupEvents = []
 }) {
-  const {
-    t
-  } = usePreferences();
+  const { t } = usePreferences();
   const [activeTab, setActiveTab] = useState("box");
   const tabId = useId();
   const tabs = [["box", "Box Score"], ["pbp", "Play by Play"], ["team", "Team Stats"], ["shots", "Shot map"]];
@@ -35,7 +34,7 @@ function GameStatsContent({
   const periodScores = getPeriodScores(events, game.is_home_game, game.quarters_count);
   return <section className="space-y-5">
       <GameHeader game={game} homeTeamName={homeTeamName} awayTeamName={awayTeamName} homeScore={homeScore} awayScore={awayScore} periodScores={periodScores} momentumPoints={momentumPoints} />
-      <div>
+      <div className="min-w-0">
         <div role="tablist" aria-label={t("Game statistics")} className="mb-4 flex gap-1 overflow-x-auto border-b border-line sm:gap-2" onKeyDown={event => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
           event.preventDefault();
@@ -62,14 +61,8 @@ function GameHeader({
   periodScores,
   momentumPoints
 }) {
-  const {
-    t,
-    teamName
-  } = usePreferences();
+  const { t } = usePreferences();
   const regulationPeriods = Number(game.quarters_count) || 4;
-  const scoreColumns = {
-    gridTemplateColumns: `minmax(5rem, 1.5fr) repeat(${periodScores.length + 1}, minmax(2.5rem, 1fr))`
-  };
   return <div className="rounded-[20px] bg-surface p-4">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <div className="rounded-full bg-raised px-3 py-1 text-xs font-bold text-muted">{t("FINAL")}
@@ -85,6 +78,10 @@ function GameHeader({
         })}`}
         </div>
       </div>
+      <div className="game-result rounded-2xl px-3 py-4" style={{
+        "--result-left": game.is_home_game ? "var(--momentum-team)" : "var(--momentum-opponent)",
+        "--result-right": game.is_home_game ? "var(--momentum-opponent)" : "var(--momentum-team)"
+      }}>
       <div dir="ltr" className="mx-auto grid w-full max-w-xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
         <HeaderTeam name={homeTeamName} />
 
@@ -102,50 +99,11 @@ function GameHeader({
 
         <HeaderTeam name={awayTeamName} />
       </div>
+      </div>
       <div className="mt-4">
           <MomentumChart momentumPoints={momentumPoints} opponentName={game.opponent_name} periodLength={game.quarter_length_sec} regulationPeriods={regulationPeriods} recordedPeriods={periodScores.length} />
         </div>
-      <div className="mt-6 overflow-x-auto rounded-2xl bg-raised p-3">
-        <div className="grid gap-2 text-center text-xs text-muted" style={scoreColumns}>
-          <div></div>
-
-          {periodScores.map(p => <div key={p.period}>{t(p.period <= regulationPeriods ? `Q${p.period}` : `OT${p.period - regulationPeriods}`)}</div>)}
-
-          <div>{t("FINAL")}</div>
-        </div>
-
-        <div className="mt-2 grid gap-2 text-center text-sm" style={scoreColumns}>
-          <div className="truncate text-start text-muted">
-            {teamName(homeTeamName)}
-          </div>
-
-          {periodScores.map(p => <div className={`font-bold ${p.away < p.home ? "text-ink" : "text-muted"}`} key={p.period}>
-
-              {p.home}
-            </div>)}
-
-          <div className={`font-bold ${awayScore < homeScore ? "text-accent" : "text-muted"}`}>
-
-            {homeScore}
-          </div>
-        </div>
-
-        <div className="mt-2 grid gap-2 text-center text-sm" style={scoreColumns}>
-          <div className="truncate text-start text-muted">
-            {teamName(awayTeamName)}
-          </div>
-
-          {periodScores.map(p => <div className={`font-bold ${p.away > p.home ? "text-ink" : "text-muted"}`} key={p.period}>
-
-              {p.away}
-            </div>)}
-
-          <div className={`${awayScore > homeScore ? "text-accent font-bold" : "text-muted"}`}>
-
-            {awayScore}
-          </div>
-        </div>
-      </div>
+      <QuarterScores periodScores={periodScores} regulationPeriods={regulationPeriods} homeTeamName={homeTeamName} awayTeamName={awayTeamName} />
     </div>;
 }
 function HeaderTeam({

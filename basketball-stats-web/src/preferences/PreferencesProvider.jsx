@@ -1,19 +1,11 @@
 import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames";
 import { useEffect, useState } from "react";
 import { PreferencesContext } from "./context";
-function read(key, allowed, fallback) {
-  try {
-    const value = localStorage.getItem(key);
-    return allowed.includes(value) ? value : fallback;
-  } catch {
-    return fallback;
-  }
-}
 export default function PreferencesProvider({
   children
 }) {
-  const [language, setLanguage] = useState(() => read("basketball-language", ["he", "en"], "he"));
-  const [theme, setTheme] = useState(() => read("basketball-theme", ["light", "dark", "system"], "light"));
+  const [language, setLanguage] = useState("he");
+  const [theme, setTheme] = useState("light");
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "he" ? "rtl" : "ltr";

@@ -1,5 +1,6 @@
 ﻿import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames.js";
 export const hebrew = {
+  "Threes":"שלשות", "Totals":"סה״כ", "Quarter scores":"תוצאות לפי רבעים",
   "No stats available":"אין נתונים זמינים",
   "Team Stats":"סטטיסטיקה קבוצתית", "Game statistics":"נתוני המשחק", "Not recorded":"לא נרשם", "No recorded events":"אין אירועים רשומים", "Back to games":"חזרה למשחקים", "Team statistics unavailable":"הסטטיסטיקה הקבוצתית אינה זמינה",
   "Field goals made":"זריקות מהשדה · קליעות",

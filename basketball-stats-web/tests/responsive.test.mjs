@@ -132,7 +132,8 @@ test("Hebrew player labels and an open performance dialog switch language withou
     assert.match(box.textContent, /Unknown Player/);
     assert.match(container.querySelector('.play-table').textContent, /עידו דוד/);
     assert.match(container.querySelector('.play-table').textContent, /גיא שטורמן/);
-    assert.match(box.querySelector('svg[aria-label]').getAttribute('aria-label'), /נועם גרונדלנד/);
+    assert.equal(box.querySelector('svg[aria-label]'), null);
+    assert.match(box.querySelector('button[aria-haspopup="dialog"]').textContent, /נועם גרונדלנד/);
     await click(box.querySelector('button[aria-haspopup="dialog"]'));
     const dialog = container.querySelector('dialog[open]');
     assert.match(dialog.textContent, /נועם גרונדלנד/);
@@ -270,47 +271,31 @@ test("momentum labels show countdown clocks, period boundaries and overtime", ()
   assert.equal(gameClockLabel(point.period, point.clockSecRemaining), "Q2 8:04");
 });
 
-test("momentum tooltip renders the recorded game clock and a plain score dash", async () => {
-  await render("/src/components/MomentumTooltip.jsx", {
-    active: true, opponentName: "Visitors", payload: [{ payload: {
-      period: 3, clockSecRemaining: 125, teamScore: 60, opponentScore: 58, scoreDiff: 2,
-    } }],
-  });
-  assert.match(container.textContent, /Q3 2:05/);
-  assert.match(container.textContent, /Afeka College 60 - 58 Visitors/);
-  assert.doesNotMatch(container.textContent, /\?|elapsed/);
-});
 
-
-test("language and theme controls persist independent preferences and preserve the page", async () => {
+test("hidden preference controls default to Hebrew and light despite saved preferences", async () => {
   const { MemoryRouter } = await import("react-router-dom");
   const { default: Provider } = await vite.ssrLoadModule("/src/preferences/PreferencesProvider.jsx");
   const { default: Layout } = await vite.ssrLoadModule("/src/layout/MainLayout.jsx");
   globalThis.localStorage = window.localStorage;
   localStorage.clear();
-  let systemDark = false, listener;
-  window.matchMedia = () => ({ get matches() { return systemDark; }, addEventListener: (_, fn) => { listener = fn; }, removeEventListener: () => {} });
+  localStorage.setItem("basketball-language", "en");
+  localStorage.setItem("basketball-theme", "system");
+  window.matchMedia = () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} });
   const app = key => React.createElement(Provider, { key }, React.createElement(MemoryRouter, { initialEntries: ["/games"] }, React.createElement(Layout)));
-  const select = async (index, value) => { await act(async () => { const el = container.querySelectorAll("select")[index]; el.value = value; el.dispatchEvent(new window.Event("change", { bubbles: true })); }); };
   try {
+    window.eval(readFileSync(new URL('../public/preferences-init.js', import.meta.url), 'utf8'));
+    assert.equal(document.documentElement.lang, "he");
+    assert.equal(document.documentElement.dir, "rtl");
+    assert.equal(document.documentElement.dataset.theme, "light");
     await act(async () => root.render(app("initial")));
     assert.equal(document.documentElement.lang, "he");
     assert.equal(document.documentElement.dir, "rtl");
     assert.equal(document.documentElement.dataset.theme, "light");
     assert.match(container.textContent, /משחקים/);
-    await select(1, "dark");
-    await select(0, "en");
-    assert.equal(document.documentElement.dir, "ltr");
-    assert.equal(document.documentElement.dataset.theme, "dark");
-    assert.match(container.textContent, /Games/);
+    assert.equal(container.querySelectorAll("select").length, 0);
     assert.equal(container.querySelector('[aria-current="page"]').getAttribute("href"), "/games");
     await act(async () => root.render(app("remount")));
-    assert.equal(container.querySelectorAll("select")[0].value, "en");
-    assert.equal(container.querySelectorAll("select")[1].value, "dark");
-    await select(1, "system");
-    await act(async () => { systemDark = true; listener(); });
-    assert.equal(document.documentElement.dataset.theme, "dark");
-    await act(async () => { systemDark = false; listener(); });
+    assert.equal(document.documentElement.lang, "he");
     assert.equal(document.documentElement.dataset.theme, "light");
   } finally { await act(async () => root.render(null)); localStorage.clear(); delete globalThis.localStorage; }
 });
@@ -365,13 +350,55 @@ test("box score preserves column and roster order without sorting controls", asy
     { player_id:'a',player_name:'Alpha',points:10 }, { player_id:'b',player_name:'Beta',points:2 }, { player_id:'c',player_name:'Gamma',points:30 },
   ].map(player => ({ ...player, defensive_rebounds:2,offensive_rebounds:1,assists:1,steals:0,blocks:0,fouls:3,turnovers:2,two_made:2,two_miss:1,three_made:1,three_miss:2,ft_made:0,ft_miss:0 }));
   await render('/src/components/BoxScore.jsx', { game,players,events:[],lineupEvents:[] }, 'sort-cycle');
-  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','REB','AST','DREB','OREB','STL','BLK','FG','3PT','FT','TO','PF','+/-']);
+  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','REB','AST','STL','BLK','FG','Threes','FT','TO','PF','+/-']);
   assert.equal(container.querySelector('tbody tr').lastElementChild.textContent, '—');
-  const names=()=>[...container.querySelectorAll('tbody tr')].map(row=>row.cells[0].textContent.split('#')[0]);
+  const names=()=>[...container.querySelectorAll('tbody tr')].map(row=>row.cells[0].querySelector('bdi').textContent);
   assert.deepEqual(names(),['Alpha','Beta','Gamma']);
   assert.equal(container.querySelectorAll('thead button').length,0);
   assert.equal(container.querySelectorAll('thead [aria-sort]').length,0);
   assert.ok(container.querySelector('tbody').textContent.includes('3/6'));
+});
+
+test("box score totals aggregate both lineup groups, shooting, rebounds and recorded minutes", async () => {
+  const players = Array.from({ length: 6 }, (_, index) => ({
+    player_id: `total-${index}`, player_name: `Total Player ${index}`, player_number: index,
+    points: index < 5 ? '9' : 0, rebounds: index < 5 ? 3 : 0, assists: 1,
+    defensive_rebounds: 2, offensive_rebounds: 1, steals: 0, blocks: 1, turnovers: 2, fouls: 3,
+    two_made: 3, two_miss: 1, three_made: index < 5 ? 1 : undefined, three_miss: 2, ft_made: 0, ft_miss: 0,
+  }));
+  await render('/src/components/BoxScore.jsx', {
+    game: { ...game, team_score: 45, opponent_score: 0 }, players,
+    events: [{ type: 'PERIOD_END', period: 4, clock_sec_remaining: 0 }],
+    lineupEvents: [
+      ...players.slice(0, 5).map(player => ({ type: 'SUB_IN', player_id: player.player_id, period: 1, clock_sec_remaining: 600 })),
+      { type: 'SUB_OUT', player_id: players[0].player_id, period: 4, clock_sec_remaining: 60 },
+      { type: 'SUB_IN', player_id: players[5].player_id, period: 4, clock_sec_remaining: 60 },
+    ],
+  }, 'box-totals');
+  const cells = [...container.querySelectorAll('tfoot tr > *')];
+  assert.deepEqual(cells.map(cell => cell.textContent), ['Totals', '200:00', '45', '15', '6', '0', '6', '23/41', '5/17', '0/0', '12', '18', '+45']);
+  assert.equal(container.querySelector('tbody button').textContent, '0Total Player 0');
+  assert.equal(container.querySelector('tbody button').dir, 'ltr');
+  assert.equal(container.querySelectorAll('tbody img, tbody svg').length, 0);
+  assert.doesNotMatch(container.querySelector('tbody').textContent, /#/);
+  assert.equal(container.querySelector('h2').parentElement.textContent, 'Box Score');
+  assert.equal(container.querySelectorAll('tbody button[aria-haspopup="dialog"]').length, 6);
+});
+
+test("Hebrew box score labels threes and leaves unknown totals unavailable", async () => {
+  const { default: Box } = await vite.ssrLoadModule('/src/components/BoxScore.jsx');
+  const players = [{ player_id: 'he-box', player_name: 'שחקן', player_number: 12, points: 0, rebounds: 0, defensive_rebounds: 0, offensive_rebounds: 0 }];
+  await act(async () => root.render(React.createElement(QueryClientProvider, { client: renderClient },
+    React.createElement(PreferencesContext.Provider, { value: { language: 'he', theme: 'light' } },
+      React.createElement(Box, { game: { ...game, team_score: null, opponent_score: null }, players, events: [], lineupEvents: [] })))));
+  assert.ok([...container.querySelectorAll('thead th')].some(cell => cell.textContent === 'שלשות'));
+  assert.equal(container.querySelector('table').dir, 'rtl');
+  assert.equal(container.querySelector('table').classList.contains('tabular-nums'), false);
+  assert.doesNotMatch(container.querySelector('thead').textContent, /הגנה|התקפה/);
+  const totals = container.querySelector('tfoot tr');
+  assert.equal(totals.cells[0].textContent, 'סה״כ');
+  assert.equal(totals.cells[1].textContent, '—');
+  assert.equal(totals.lastElementChild.textContent, '—');
 });
 
 test("box score rows open the selected player's current game statistics and shot map", async () => {
@@ -392,7 +419,7 @@ test("box score rows open the selected player's current game statistics and shot
       events: [{ type: 'THREE_MADE', period: 1, clock_sec_remaining: 500 }, { type: 'PERIOD_END', period: 4, clock_sec_remaining: 0 }],
       lineupEvents: [{ type: 'SUB_IN', player_id: 81, period: 1, clock_sec_remaining: 600 }],
     }, 'clickable-box-score');
-    const rows = container.querySelectorAll('table tbody tr');
+    const rows = container.querySelectorAll('[role="tabpanel"] table tbody tr');
     // A statistic cell opens the dialog just like the player name does.
     await click(rows[0].cells[2]);
     let dialog = container.querySelector('dialog[open]');
@@ -652,7 +679,7 @@ test("season MPG and plus/minus ignore unavailable timing in another season",asy
 });
 
 
-test("rebuilt momentum renders one smooth curve, aligned green/orange gradients, and localized periods", async () => {
+test("compact momentum renders a linear filled area, two background bands and a right-hand scale", async () => {
   const points = buildMomentumPoints([
     { type: "THREE_MADE", period: 1, clock_sec_remaining: 500 },
     { type: "OPP_TWO_MADE", period: 2, clock_sec_remaining: 400 },
@@ -663,18 +690,46 @@ test("rebuilt momentum renders one smooth curve, aligned green/orange gradients,
   assert.match(container.textContent, /Scoring momentum/);
   assert.match(container.textContent, /Afeka College/);
   assert.match(container.textContent, /OT1/);
-  const curves = container.querySelectorAll(".recharts-area-curve");
+  const curves = container.querySelectorAll(".recharts-area-area");
   assert.equal(curves.length, 1);
-  assert.match(curves[0].getAttribute("d"), /C/);
+  assert.match(curves[0].getAttribute("d"), /L/);
   assert.doesNotMatch(curves[0].getAttribute("d"), /NaN|Infinity/);
   const gradients = container.querySelectorAll("linearGradient");
-  assert.equal(gradients.length, 2);
+  assert.equal(gradients.length, 1);
   for (const gradient of gradients) {
     assert.equal(gradient.getAttribute("gradientUnits"), "userSpaceOnUse");
     assert.ok(gradient.querySelector('stop[stop-color="var(--momentum-team)"]'));
     assert.ok(gradient.querySelector('stop[stop-color="var(--momentum-opponent)"]'));
   }
-  assert.ok(container.querySelector('[role="application"]'));
+  const chart = container.querySelector('.recharts-surface[role="img"]');
+  assert.ok(chart);
+  assert.equal(chart.hasAttribute('tabindex'), false);
+  await act(async () => {
+    chart.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 150, clientY: 70 }));
+    chart.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 150, clientY: 70 }));
+  });
+  assert.equal(container.querySelector('.recharts-tooltip-wrapper'), null);
+  assert.equal(container.querySelector('time'), null);
+  assert.equal(container.querySelectorAll('.recharts-reference-area').length, 2);
+  assert.equal(container.querySelectorAll('.recharts-reference-line line[stroke-dasharray]').length, 0);
+});
+
+test("quarter scores show home and away period totals with overtime and tied quarters", async () => {
+  const periodScores = [
+    { period: 1, home: 34, away: 28 }, { period: 2, home: 12, away: 28 },
+    { period: 3, home: 16, away: 27 }, { period: 4, home: 33, away: 21 },
+    { period: 5, home: 6, away: 6 },
+  ];
+  await render('/src/components/QuarterScores.jsx', { periodScores, regulationPeriods: 4, homeTeamName: 'Afeka', awayTeamName: 'Visitors' });
+  assert.equal(container.querySelector('table').dir, 'rtl');
+  assert.deepEqual([...container.querySelectorAll('thead th')].map(cell => cell.textContent), ['Q1', 'Q2', 'Q3', 'Q4', 'OT1']);
+  const rows = container.querySelectorAll('tbody tr');
+  assert.equal(rows[0].getAttribute('aria-label'), 'Afeka College');
+  assert.equal(rows[1].getAttribute('aria-label'), 'Visitors');
+  assert.deepEqual([...rows[0].cells].map(cell => cell.textContent), ['34', '12', '16', '33', '6']);
+  assert.deepEqual([...rows[1].cells].map(cell => cell.textContent), ['28', '28', '27', '21', '6']);
+  assert.deepEqual([...rows[0].cells].map(cell => cell.classList.contains('font-bold')), [true, false, false, true, false]);
+  assert.deepEqual([...rows[1].cells].map(cell => cell.classList.contains('font-bold')), [false, true, true, false, false]);
 });
 
 test("momentum shows an empty state without scoring and retains tied finishes", async () => {
@@ -686,16 +741,6 @@ test("momentum shows an empty state without scoring and retains tied finishes", 
     { type: "OPP_TWO_MADE", period: 1, clock_sec_remaining: 400 },
   ] });
   assert.ok(container.querySelector(".momentum-plot"));
-});
-
-test("carried chart endpoint tooltip shows the real scoring clock and Hebrew college name", async () => {
-  const recordedPoint = { period: 4, clockSecRemaining: 14, teamScore: 60, opponentScore: 58, scoreDiff: 2 };
-  const { default: Tooltip } = await vite.ssrLoadModule("/src/components/MomentumTooltip.jsx");
-  await act(async () => root.render(React.createElement(PreferencesContext.Provider, { value: { language: "he", theme: "dark" } },
-    React.createElement(Tooltip, { active: true, opponentName: "Visitors", payload: [{ payload: { ...recordedPoint, clockSecRemaining: 0, recordedPoint } }] }))));
-  assert.match(container.textContent, /0:14/);
-  assert.match(container.textContent, /מכללת אפקה/);
-  assert.equal(container.querySelector(".momentum-tooltip").dir, "rtl");
 });
 
 test("team stats show comparison bars only for available pairs and preserve recorded zero", async () => {
