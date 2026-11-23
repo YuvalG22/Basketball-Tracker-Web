@@ -10,6 +10,7 @@ import { filterPlays, periodLabel, scoreLabel, assistingPlayer } from "../src/ut
 import { findTeam, teams } from "../src/utils/teamLogos.js";
 import { buildMomentumPoints, gameClockLabel, momentumAxisClock } from "../src/utils/gameStats.js";
 import { existsSync, readFileSync } from "node:fs";
+import { teamStatsFromEvents } from "../src/utils/teamStats.js";
 
 let vite, dom, root, container, PreferencesContext;
 const renderClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -46,6 +47,46 @@ async function render(module, props, key = "one") {
   try { await act(async () => renderInEnglish(React.createElement(QueryClientProvider, { client: renderClient }, React.createElement(Component, { ...props, key })))); } catch (error) { throw error.errors?.[0] ?? error; }
 }
 async function click(element) { await act(async () => element.click()); }
+
+test("fouls drawn display separately in box score totals, player quarters and team stats", async () => {
+  const players = [
+    {player_id:'drawn-a',player_name:'Drawer A',fouls:1,fouls_drawn:2,defensive_rebounds:0,offensive_rebounds:0},
+    {player_id:'drawn-b',player_name:'Drawer B',fouls:4,fouls_drawn:3,defensive_rebounds:0,offensive_rebounds:0},
+  ];
+  await render('/src/components/BoxScore.jsx',{game,players,events:[],lineupEvents:[]},'drawn-box');
+  const headings = [...container.querySelectorAll('thead th')].map(cell => cell.textContent);
+  const fd = headings.indexOf('FD'), pf = headings.indexOf('PF');
+  assert.ok(fd > 0 && pf > 0);
+  assert.equal(container.querySelector('tbody tr').cells[fd].textContent,'2');
+  assert.equal(container.querySelector('tbody tr').cells[pf].textContent,'1');
+  assert.equal(container.querySelector('tfoot tr').cells[fd].textContent,'5');
+  const {PlayerGameDialog} = await vite.ssrLoadModule('/src/components/PlayerGameLog.jsx');
+  await act(async () => renderInEnglish(React.createElement(PlayerGameDialog,{
+    game:{...game,fouls:1,fouls_drawn:3,periods:[{period:2,fouls:0,fouls_drawn:2}]},playerName:'Drawer A',onClose(){},
+  })));
+  const drawnValue = () => [...container.querySelectorAll('dt')].find(node=>node.textContent==='Fouls drawn').nextElementSibling.textContent;
+  assert.equal(drawnValue(),'3');
+  await click([...container.querySelectorAll('button')].find(button=>button.textContent==='Q2'));
+  assert.equal(drawnValue(),'2');
+  const stats = teamStatsFromEvents({},[{type:'PF_DRAWN'},{type:'PF_DRAWN'},{type:'PF'},
+    {type:'PF_DRAWN',is_deleted:true}]);
+  assert.equal(stats.afeka.fouls_drawn,2);
+  assert.equal(stats.afeka.fouls,1);
+  await render('/src/components/TeamStats.jsx',{stats,opponentName:'Opponent'},'drawn-team');
+  assert.ok(container.querySelector('[data-stat="fouls_drawn"]').textContent.includes('Fouls drawn'));
+});
+
+test("play by play labels drawn and opponent fouls without adding scoring", async () => {
+  const plays = [
+    {id:'opp-foul',type:'OPP_PF',period:1,clock_sec_remaining:500,team_score_at_event:2,opponent_score_at_event:0},
+    {id:'drawn',type:'PF_DRAWN',player_name:'Drawer A',period:1,clock_sec_remaining:500,team_score_at_event:2,opponent_score_at_event:0},
+  ];
+  await render('/src/components/PlayByPlay.jsx',{events:plays,players:[],game},'drawn-timeline');
+  assert.ok(container.textContent.includes('Foul drawn'));
+  assert.ok(container.textContent.includes('Personal foul'));
+  assert.ok(container.textContent.includes('Drawer A'));
+  assert.equal(buildMomentumPoints(plays).length,1);
+});
 
 test("league route shows ten initial teams and a fifth navigation tab in both languages", async () => {
   const { MemoryRouter } = await import('react-router-dom');
@@ -350,7 +391,7 @@ test("box score preserves column and roster order without sorting controls", asy
     { player_id:'a',player_name:'Alpha',points:10 }, { player_id:'b',player_name:'Beta',points:2 }, { player_id:'c',player_name:'Gamma',points:30 },
   ].map(player => ({ ...player, defensive_rebounds:2,offensive_rebounds:1,assists:1,steals:0,blocks:0,fouls:3,turnovers:2,two_made:2,two_miss:1,three_made:1,three_miss:2,ft_made:0,ft_miss:0 }));
   await render('/src/components/BoxScore.jsx', { game,players,events:[],lineupEvents:[] }, 'sort-cycle');
-  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','REB','AST','STL','BLK','FG','Threes','FT','TO','PF','+/-']);
+  assert.deepEqual([...container.querySelectorAll('thead th')].map(el=>el.textContent), ['Player','MIN','PTS','REB','AST','STL','BLK','FG','Threes','FT','TO','PF','FD','+/-']);
   assert.equal(container.querySelector('tbody tr').lastElementChild.textContent, '—');
   const names=()=>[...container.querySelectorAll('tbody tr')].map(row=>row.cells[0].querySelector('bdi').textContent);
   assert.deepEqual(names(),['Alpha','Beta','Gamma']);
@@ -376,7 +417,7 @@ test("box score totals aggregate both lineup groups, shooting, rebounds and reco
     ],
   }, 'box-totals');
   const cells = [...container.querySelectorAll('tfoot tr > *')];
-  assert.deepEqual(cells.map(cell => cell.textContent), ['Totals', '200:00', '45', '15', '6', '0', '6', '23/41', '5/17', '0/0', '12', '18', '+45']);
+  assert.deepEqual(cells.map(cell => cell.textContent), ['Totals', '200:00', '45', '15', '6', '0', '6', '23/41', '5/17', '0/0', '12', '18', '—', '+45']);
   assert.equal(container.querySelector('tbody button').textContent, '0Total Player 0');
   assert.equal(container.querySelector('tbody button').dir, 'ltr');
   assert.equal(container.querySelectorAll('tbody img, tbody svg').length, 0);

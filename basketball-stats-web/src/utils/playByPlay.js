@@ -14,6 +14,8 @@ export function scoreLabel(event, isHomeGame) {
 }
 
 export function scoringAction(type) {
+  if (type === "PF_DRAWN") return "Foul drawn";
+  if (type === "PF" || type === "OPP_PF") return "Personal foul";
   if (type.endsWith("THREE_MADE")) return "3 pointer";
   if (type.endsWith("TWO_MADE")) return "2 pointer";
   if (type.endsWith("FT_MADE")) return "Free throw";

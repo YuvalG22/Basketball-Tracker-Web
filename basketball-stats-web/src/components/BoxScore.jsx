@@ -1,11 +1,11 @@
-﻿import { useQueries } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { getPlayerDetails } from "../api/playersApi";
 import { usePreferences } from "../preferences/context";
 import { calculatePlayingTime, formatMinutes } from "../utils/playingTime";
 import { calculatePlusMinus, formatPlusMinus } from "../utils/plusMinus";
 import { PlayerGameDialog } from "./PlayerGameLog";
-const columns = [["MIN", "seconds"], ["PTS", "points"], ["REB", "rebounds"], ["AST", "assists"], ["STL", "steals"], ["BLK", "blocks"], ["FG", "fg"], ["Threes", "three_made"], ["FT", "ft_made"], ["TO", "turnovers"], ["PF", "fouls"], ["+/-", "plusMinus"]];
+const columns = [["MIN", "seconds"], ["PTS", "points"], ["REB", "rebounds"], ["AST", "assists"], ["STL", "steals"], ["BLK", "blocks"], ["FG", "fg"], ["Threes", "three_made"], ["FT", "ft_made"], ["TO", "turnovers"], ["PF", "fouls"], ["FD", "fouls_drawn"], ["+/-", "plusMinus"]];
 const shot = (made, miss) => `${Number(made ?? 0)}/${Number(made ?? 0) + Number(miss ?? 0)}`;
 const statValue = (player, key) => key === "plusMinus" ? formatPlusMinus(player.plusMinus) : key === "seconds" ? formatMinutes(player.seconds) : key === "fg" ? shot(Number(player.two_made ?? 0) + Number(player.three_made ?? 0), Number(player.two_miss ?? 0) + Number(player.three_miss ?? 0)) : key === "three_made" ? shot(player.three_made, player.three_miss) : key === "ft_made" ? shot(player.ft_made, player.ft_miss) : player[key] ?? "—";
 const sum = (rows, key) => rows.length && rows.every(row => row[key] != null && Number.isFinite(Number(row[key]))) ? rows.reduce((total, row) => total + Number(row[key]), 0) : undefined;
@@ -36,7 +36,7 @@ export default function BoxScore({ game, players, events, lineupEvents }) {
         </colgroup>
         <thead><tr className="border-b border-line text-muted">
           <th scope="col" className="sticky start-0 bg-surface px-3 py-2 text-start font-bold">{t("Player")}</th>
-          {columns.map(([label, key]) => <th key={key} scope="col" dir={key === "plusMinus" ? "ltr" : undefined} className={`whitespace-nowrap px-1 py-2 text-center font-bold ${key === "points" ? "box-score-points" : ""}`}>{t(label)}</th>)}
+          {columns.map(([label, key]) => <th key={key} scope="col" dir={key === "plusMinus" ? "ltr" : undefined} title={key === "fouls_drawn" ? t("Fouls drawn") : undefined} className={`whitespace-nowrap px-1 py-2 text-center font-bold ${key === "points" ? "box-score-points" : ""}`}>{t(label)}</th>)}
         </tr></thead>
         {groups.map(([label, group]) => <tbody key={label ?? "players"}>
           {label && <tr className="border-b border-line bg-raised"><th scope="rowgroup" colSpan={columns.length + 1} className="px-3 py-1 text-start font-semibold">{t(label)}</th></tr>}

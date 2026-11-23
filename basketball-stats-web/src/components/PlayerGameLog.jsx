@@ -20,7 +20,9 @@ const countingStats = [
 ];
 const count = value => Number(value ?? 0);
 const logStats = [["PTS", "points", "Points"], ["REB", "rebounds", "Rebounds"], ["AST", "assists", "Assists"], ["STL", "steals", "Steals"], ["BLK", "blocks", "Blocks"], ["TOV", "turnovers", "Turnovers"]];
-const gameStats = game => game.fouls == null ? countingStats : [...countingStats, ["Fouls", "fouls"]];
+const gameStats = game => [...countingStats,
+  ...(game.fouls == null ? [] : [["Fouls", "fouls"]]),
+  ...(game.fouls_drawn == null ? [] : [["Fouls drawn", "fouls_drawn"]])];
 
 export default function PlayerGameLog({ games, playerId, player, playerName }) {
   const { t, teamName, language } = usePreferences();
@@ -48,6 +50,7 @@ export default function PlayerGameLog({ games, playerId, player, playerName }) {
           {['FG', '2PT', '3PT', 'FT'].map(label => <th scope="col" className="player-log-extra" key={label}>{t(label)}</th>)}
           <th scope="col" title={t("+/-")}><span dir="ltr">+/-</span></th>
           {rows.some(game => game.fouls != null) && <th scope="col" className="player-log-extra">{t("Fouls")}</th>}
+          {rows.some(game => game.fouls_drawn != null) && <th scope="col" className="player-log-extra">{t("Fouls drawn")}</th>}
         </tr></thead>
         <tbody>{rows.map(game => {
           const date = Number(game.game_date_epoch);
@@ -64,6 +67,7 @@ export default function PlayerGameLog({ games, playerId, player, playerName }) {
             {shots.map(([label, made, attempts]) => <td className="player-log-shooting" data-label={t(label)} key={label}><span dir="ltr">{shootingValue(made, attempts)}</span></td>)}
             <td data-label={t("+/-")} data-compact-label="+/-"><span dir="ltr">{formatPlusMinus(game.plusMinus)}</span></td>
             {rows.some(row => row.fouls != null) && <td className="player-log-extra" data-label={t("Fouls")}><span dir="ltr">{game.fouls == null ? '—' : count(game.fouls)}</span></td>}
+            {rows.some(row => row.fouls_drawn != null) && <td className="player-log-extra" data-label={t("Fouls drawn")}><span dir="ltr">{game.fouls_drawn == null ? '—' : count(game.fouls_drawn)}</span></td>}
           </tr>;
         })}</tbody>
       </table>

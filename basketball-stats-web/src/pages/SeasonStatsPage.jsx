@@ -87,6 +87,10 @@ const statCards = [{
   label: "FT",
   key: "ftm"
 }, {
+  title: "Fouls drawn",
+  label: "FDPG",
+  key: "pf_drawn"
+}, {
   title: "+/-",
   label: "+/-",
   customValue: player => formatAveragePlusMinus(player.plusMinusAverage),

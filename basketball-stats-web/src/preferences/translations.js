@@ -1,5 +1,7 @@
 ﻿import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames.js";
 export const hebrew = {
+  "Fouls drawn":"עבירות שנסחטו", "Foul drawn":"עבירה שנסחטה", "Personal foul":"עבירה אישית",
+  "FD":"עב׳ שסחט", "FDPG":"סחיטות למשחק",
   "Threes":"שלשות", "Totals":"סה״כ", "Quarter scores":"תוצאות לפי רבעים",
   "No stats available":"אין נתונים זמינים",
   "Team Stats":"סטטיסטיקה קבוצתית", "Game statistics":"נתוני המשחק", "Not recorded":"לא נרשם", "No recorded events":"אין אירועים רשומים", "Back to games":"חזרה למשחקים", "Team statistics unavailable":"הסטטיסטיקה הקבוצתית אינה זמינה",

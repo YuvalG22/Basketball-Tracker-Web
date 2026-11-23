@@ -1,5 +1,5 @@
 import { usePreferences } from "../preferences/context";
-const totals = [["Rebounds", "rebounds"], ["Offensive Rebounds", "offensive_rebounds"], ["Defensive Rebounds", "defensive_rebounds"], ["Assists", "assists"], ["Steals", "steals"], ["Blocks", "blocks"], ["Turnovers", "turnovers"], ["Fouls", "fouls"]];
+const totals = [["Rebounds", "rebounds"], ["Offensive Rebounds", "offensive_rebounds"], ["Defensive Rebounds", "defensive_rebounds"], ["Assists", "assists"], ["Steals", "steals"], ["Blocks", "blocks"], ["Turnovers", "turnovers"], ["Fouls", "fouls"], ["Fouls drawn", "fouls_drawn"]];
 const shooting = [["Field goals", "fg"], ["2 pointers", "two"], ["3 pointers", "three"], ["Free throws", "ft"]];
 export default function TeamStats({ stats, opponentName }) {
   const { t, teamName } = usePreferences();

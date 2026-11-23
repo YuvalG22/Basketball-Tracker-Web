@@ -67,7 +67,7 @@ function PlayerHeader({
       <section className="mt-6 min-w-0" aria-label={t("Season averages")}>
         <h2 className="mb-4 text-lg font-bold">{t("Season averages")}</h2>
         <div className="overflow-x-auto" tabIndex={0}>
-          <div className="grid min-w-[560px] grid-cols-7 gap-3">
+          <div className="grid min-w-[640px] grid-cols-8 gap-3">
             <MainStat label={t("MPG")} value={formatMinutes(timing.averages[String(player.id ?? player.player_id)])} />
             <MainStat label={t("PPG")} value={averages.ppg} />
             <MainStat label={t("RPG")} value={averages.rpg} />
@@ -75,6 +75,7 @@ function PlayerHeader({
             <MainStat label={t("SPG")} value={averages.spg} />
             <MainStat label={t("BPG")} value={averages.bpg} />
             <MainStat label={t("TPG")} value={averages.tpg} />
+            <MainStat label={t("FDPG")} value={averages.fdpg} />
           </div>
         </div>
       </section>

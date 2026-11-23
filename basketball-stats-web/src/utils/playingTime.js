@@ -1,4 +1,4 @@
-﻿// Use the tracker's recorded SUB_IN / SUB_OUT stints independently per player.
+// Use the tracker's recorded SUB_IN / SUB_OUT stints independently per player.
 // Opening-lineup taps may be recorded after the game clock has started.
 export function calculatePlayingTime({ game, players = [], events = [], lineupEvents = [] }) {
   const length = Number(game.quarter_length_sec);
@@ -60,7 +60,7 @@ export function calculatePlayingTime({ game, players = [], events = [], lineupEv
     if (end == null || end < start) invalid.add(id);
     else totals[id] = (totals[id] ?? 0) + duration(start, end);
   }
-  const activity = ['points', 'rebounds', 'defensive_rebounds', 'offensive_rebounds', 'assists', 'steals', 'blocks', 'turnovers', 'fouls', 'two_miss', 'three_miss', 'ft_miss'];
+  const activity = ['points', 'rebounds', 'defensive_rebounds', 'offensive_rebounds', 'assists', 'steals', 'blocks', 'turnovers', 'fouls', 'fouls_drawn', 'two_miss', 'three_miss', 'ft_miss'];
   for (const player of players) {
     const id = String(player.player_id);
     if (invalid.has(id)) continue;
