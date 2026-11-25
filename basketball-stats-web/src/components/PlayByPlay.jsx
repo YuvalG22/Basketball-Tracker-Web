@@ -32,7 +32,7 @@ export default function PlayByPlay({
         </div>
       </header>
       <div className="play-list" role="region" aria-label={t("Recorded plays")} tabIndex={0}>
-        {visible.length === 0 ? <p className="p-4 text-sm text-muted">{t("No recorded events for this period.")}</p> : <table className="play-table" dir="ltr">
+        {visible.length === 0 ? <p className="p-4 text-sm text-muted">{t("No scoring events recorded for this period.")}</p> : <table className="play-table" dir="ltr">
             <caption className="sr-only">{t("Recorded plays, home team on the left and away team on the right")}</caption>
             <colgroup><col /><col className="play-score-column" /><col /></colgroup>
             <thead><tr>
@@ -43,11 +43,9 @@ export default function PlayByPlay({
             <tbody>
               {visible.map((event, index) => {
             const label = periodLabel(Number(event.period), regulation);
-            const marker = event.type === "PERIOD_START" || event.type === "PERIOD_END";
             const opponent = event.type.startsWith("OPP_");
             const homeSide = opponent ? !game.is_home_game : game.is_home_game;
             const scores = scoreLabel(event, game.is_home_game).split(" \u2013 ");
-            const basket = /^(OPP_)?(TWO|THREE|FT)_MADE$/.test(event.type);
             const scoringColor = opponent ? "play-score-opponent" : "play-score-afeka";
             const seconds = Math.max(0, Number(event.clock_sec_remaining) || 0);
             const assistName = playerName(assistingPlayer(event, players));
@@ -56,10 +54,10 @@ export default function PlayByPlay({
                   <span>{t(scoringAction(event.type))}</span>
                   <span className="play-assist">{assistName ? <>{t("Assist:")}{" "}<span className="font-medium">{assistName}</span></> : "\u00a0"}</span>
                 </>;
-            return marker ? <tr key={event.id ?? index} className="play-period"><td colSpan={3}>{event.type === "PERIOD_START" ? t("START") : t("END")} {t(label)}</td></tr> : <tr key={event.id ?? index} data-team-side={homeSide ? t("home") : t("away")}>
+            return <tr key={event.id ?? index} data-team-side={homeSide ? t("home") : t("away")}>
                     <td className={`play-home ${homeSide ? "play-active" : ""}`} dir={language === "he" ? "rtl" : "ltr"}>{homeSide ? action : null}</td>
                     <td className="play-score">
-                      <span aria-label={t("Score")}>{scores.length === 2 ? <><span className={basket && homeSide ? scoringColor : undefined}>{scores[0]}</span>{" \u2013 "}<span className={basket && !homeSide ? scoringColor : undefined}>{scores[1]}</span></> : scores[0]}</span>
+                      <span aria-label={t("Score")}>{scores.length === 2 ? <><span className={homeSide ? scoringColor : undefined}>{scores[0]}</span>{" \u2013 "}<span className={!homeSide ? scoringColor : undefined}>{scores[1]}</span></> : scores[0]}</span>
                       <span className="play-clock">{t(label)} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
                     </td>
                     <td className={`play-away ${!homeSide ? "play-active" : ""}`} dir={language === "he" ? "rtl" : "ltr"}>{!homeSide ? action : null}</td>

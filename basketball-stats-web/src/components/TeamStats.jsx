@@ -1,11 +1,14 @@
 import { usePreferences } from "../preferences/context";
+import { getScoringTeamStats } from "../utils/gameStats";
+const scoring = [["Largest lead", "largest_lead"], ["Most points in a row", "max_scoring_run"]];
 const totals = [["Rebounds", "rebounds"], ["Offensive Rebounds", "offensive_rebounds"], ["Defensive Rebounds", "defensive_rebounds"], ["Assists", "assists"], ["Steals", "steals"], ["Blocks", "blocks"], ["Turnovers", "turnovers"], ["Fouls", "fouls"], ["Fouls drawn", "fouls_drawn"]];
 const shooting = [["Field goals", "fg"], ["2 pointers", "two"], ["3 pointers", "three"], ["Free throws", "ft"]];
-export default function TeamStats({ stats, opponentName }) {
+export default function TeamStats({ stats, opponentName, game, events }) {
   const { t, teamName } = usePreferences();
   if (!stats) return <p className="p-4 text-muted">{t("Team statistics unavailable")}</p>;
-  const rows = [...shooting, ...totals];
-  const value = (team, key) => key.split(".").reduce((obj, part) => obj?.[part], stats[team]) ?? null;
+  const scoringStats = getScoringTeamStats(game, events);
+  const rows = [...scoring, ...shooting, ...totals];
+  const value = (team, key) => scoring.some(([, field]) => field === key) ? scoringStats[team][key] : stats[team]?.[key] ?? null;
   return <section className="team-stats rounded-2xl bg-surface p-4 sm:p-6">
     <h2 className="text-xl font-bold">{t("Team Stats")}</h2>
     <div className="mt-4 grid grid-cols-2 gap-4 text-sm font-bold"><span className="team-stats-afeka">{teamName("Afeka")}</span><span className="team-stats-opponent text-end">{teamName(opponentName)}</span></div>

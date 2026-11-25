@@ -13,6 +13,49 @@ const scoringPoints = {
   OPP_TWO_MADE: 2, OPP_THREE_MADE: 3, OPP_FT_MADE: 1,
 };
 
+export function getScoringTeamStats(game = {}, events = []) {
+  const unavailable = {
+    afeka: { largest_lead: null, max_scoring_run: null },
+    opponent: { largest_lead: null, max_scoring_run: null },
+  };
+  const finalScores = [game.team_score, game.opponent_score];
+  if (finalScores.some(value => value == null || String(value).trim() === "" || !Number.isInteger(Number(value)) || Number(value) < 0)) return unavailable;
+  const scoring = events.filter(event => !event.is_deleted && scoringPoints[event.type]);
+  if (scoring.some(event => !Number.isInteger(Number(event.period)) || Number(event.period) < 1 ||
+    event.clock_sec_remaining == null || String(event.clock_sec_remaining).trim() === "" ||
+    !Number.isFinite(Number(event.clock_sec_remaining)) || Number(event.clock_sec_remaining) < 0)) return unavailable;
+  const timestamp = value => value == null ? NaN : Number.isFinite(Number(value)) ? Number(value) : Date.parse(value);
+  scoring.sort((a, b) => {
+    const clockOrder = Number(a.period) - Number(b.period) || Number(b.clock_sec_remaining) - Number(a.clock_sec_remaining);
+    if (clockOrder) return clockOrder;
+    const aTime = timestamp(a.created_at), bTime = timestamp(b.created_at);
+    if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) return aTime - bTime;
+    if (/^\d+$/.test(a.local_id) && /^\d+$/.test(b.local_id)) {
+      const aId = BigInt(a.local_id), bId = BigInt(b.local_id);
+      return aId < bId ? -1 : aId > bId ? 1 : 0;
+    }
+    return 0;
+  });
+  const result = {
+    afeka: { largest_lead: 0, max_scoring_run: 0 },
+    opponent: { largest_lead: 0, max_scoring_run: 0 },
+  };
+  const scores = { afeka: 0, opponent: 0 }, runs = { afeka: 0, opponent: 0 };
+  for (const event of scoring) {
+    const team = event.type.startsWith("OPP_") ? "opponent" : "afeka";
+    const other = team === "afeka" ? "opponent" : "afeka";
+    const points = scoringPoints[event.type];
+    scores[team] += points;
+    runs[team] += points;
+    runs[other] = 0;
+    result[team].max_scoring_run = Math.max(result[team].max_scoring_run, runs[team]);
+    result[team].largest_lead = Math.max(result[team].largest_lead, scores[team] - scores[other]);
+  }
+  // A partial scoring feed cannot establish either team's game-wide maximum.
+  if (scores.afeka !== Number(game.team_score) || scores.opponent !== Number(game.opponent_score)) return unavailable;
+  return result;
+}
+
 export function getPeriodScores(events, isHomeGame, quartersCount = 4) {
   const count = Math.max(
     Number(quartersCount) || 4,

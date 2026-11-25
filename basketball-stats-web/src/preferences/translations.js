@@ -1,5 +1,8 @@
 ﻿import { AFEKA_NAME_EN, AFEKA_NAME_HE } from "../utils/teamNames.js";
 export const hebrew = {
+  "Next game":"המשחק הבא", "Time to be confirmed":"שעה טרם נקבעה",
+  "No scoring events recorded for this period.":"לא נרשמו מהלכי קליעה ברבע זה.",
+  "Largest lead":"יתרון שיא", "Most points in a row":"רצף נקודות מרבי",
   "Fouls drawn":"עבירות שנסחטו", "Foul drawn":"עבירה שנסחטה", "Personal foul":"עבירה אישית",
   "FD":"עב׳ שסחט", "FDPG":"סחיטות למשחק",
   "Threes":"שלשות", "Totals":"סה״כ", "Quarter scores":"תוצאות לפי רבעים",

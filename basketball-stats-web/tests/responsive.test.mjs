@@ -76,16 +76,21 @@ test("fouls drawn display separately in box score totals, player quarters and te
   assert.ok(container.querySelector('[data-stat="fouls_drawn"]').textContent.includes('Fouls drawn'));
 });
 
-test("play by play labels drawn and opponent fouls without adding scoring", async () => {
-  const plays = [
-    {id:'opp-foul',type:'OPP_PF',period:1,clock_sec_remaining:500,team_score_at_event:2,opponent_score_at_event:0},
-    {id:'drawn',type:'PF_DRAWN',player_name:'Drawer A',period:1,clock_sec_remaining:500,team_score_at_event:2,opponent_score_at_event:0},
-  ];
-  await render('/src/components/PlayByPlay.jsx',{events:plays,players:[],game},'drawn-timeline');
-  assert.ok(container.textContent.includes('Foul drawn'));
-  assert.ok(container.textContent.includes('Personal foul'));
-  assert.ok(container.textContent.includes('Drawer A'));
-  assert.equal(buildMomentumPoints(plays).length,1);
+test("play by play includes made shots for both teams and excludes every non-scoring event", async () => {
+  const scoringTypes = ['TWO_MADE','THREE_MADE','FT_MADE','OPP_TWO_MADE','OPP_THREE_MADE','OPP_FT_MADE'];
+  const otherTypes = ['PERIOD_START','PERIOD_END','TWO_MISS','THREE_MISS','FT_MISS','OPP_TWO_MISS','OPP_THREE_MISS','OPP_FT_MISS','PF','OPP_PF','PF_DRAWN','ASSIST','DREB','OREB','TURNOVER','STEAL','BLOCK','SUB_IN','SUB_OUT','TIMEOUT'];
+  const plays = [...scoringTypes,...otherTypes].map((type,index) => ({
+    id:type,type,period:1,clock_sec_remaining:600-index,player_name:scoringTypes.includes(type) ? `Scorer ${type}` : `Hidden ${type}`,
+  }));
+  plays.push({...plays[0],id:'deleted',is_deleted:true,player_name:'Deleted scorer'});
+  await render('/src/components/PlayByPlay.jsx',{events:plays,players:[],game},'scoring-timeline');
+  assert.equal(container.querySelectorAll('tbody tr').length,6);
+  for (const type of scoringTypes) assert.ok(container.textContent.includes(`Scorer ${type}`),type);
+  assert.doesNotMatch(container.textContent,/Hidden|Deleted scorer|START Q1|END Q1/);
+  assert.deepEqual(filterPlays(plays,'all').map(event => event.type),scoringTypes);
+  await render('/src/components/PlayByPlay.jsx',{events:plays.filter(event => otherTypes.includes(event.type)),players:[],game},'empty-scoring-timeline');
+  assert.match(container.textContent,/No scoring events recorded for this period/);
+  assert.equal(container.querySelector('table'),null);
 });
 
 test("league route shows ten initial teams and a fifth navigation tab in both languages", async () => {
@@ -215,9 +220,10 @@ test("timeline filters periods and overtime and shows an empty period", async ()
   assert.match(container.textContent, /3 pointer/);
   assert.equal(button("OT1").getAttribute("aria-pressed"), "true");
   await click(button("Q2"));
-  assert.match(container.textContent, /No recorded events/);
+  assert.match(container.textContent, /No scoring events recorded/);
   await click(button("All periods"));
-  assert.match(container.textContent, /START Q1/);
+  assert.equal(container.querySelectorAll('tbody tr').length, 2);
+  assert.doesNotMatch(container.textContent, /START Q1/);
   assert.match(container.textContent, /First Player/);
 });
 
@@ -276,7 +282,7 @@ test("score labels respect home and away orientation and missing snapshots", () 
   assert.equal(scoreLabel(event, false), "12 – 9");
   assert.equal(scoreLabel({ ...event, team_score_at_event: null }, false), "—");
   assert.equal(periodLabel(5, 4), "OT1");
-  assert.deepEqual(filterPlays(events, 1).map(event => event.id), ["start", "a"]);
+  assert.deepEqual(filterPlays(events, 1).map(event => event.id), ["a"]);
 });
 
 test("dialog opens, locks page scrolling, handles Escape and restores focus", async () => {
@@ -782,6 +788,35 @@ test("momentum shows an empty state without scoring and retains tied finishes", 
     { type: "OPP_TWO_MADE", period: 1, clock_sec_remaining: 400 },
   ] });
   assert.ok(container.querySelector(".momentum-plot"));
+});
+
+test("summary team tab compares largest leads and scoring runs and marks incomplete history unavailable", async () => {
+  const plays = ['OPP_THREE_MADE','TWO_MADE','THREE_MADE','OPP_TWO_MADE','OPP_TWO_MADE','THREE_MADE'].map((type,index) => ({
+    id:index,type,period:1,clock_sec_remaining:600-index,
+  }));
+  const recordedGame = {...game,team_score:8,opponent_score:7};
+  const teamStats = teamStatsFromEvents(recordedGame,plays);
+  await render('/src/components/GameDetails.jsx',{game:recordedGame,events:plays,teamStats},'lead-stats');
+  await click([...container.querySelectorAll('[role="tab"]')].find(button => button.textContent==='Team Stats'));
+  const panel = container.querySelector('[role="tabpanel"]:not([hidden])');
+  const lead = panel.querySelector('[data-stat="largest_lead"]');
+  const run = panel.querySelector('[data-stat="max_scoring_run"]');
+  assert.deepEqual([...lead.querySelectorAll('span[dir="ltr"]')].map(node => node.textContent),['2','3']);
+  assert.deepEqual([...run.querySelectorAll('span[dir="ltr"]')].map(node => node.textContent),['5','4']);
+  assert.match(lead.textContent,/Largest lead/);
+  assert.match(run.textContent,/Most points in a row/);
+  assert.ok(lead.querySelector('[aria-hidden="true"]'));
+  await render('/src/components/TeamStats.jsx',{stats:teamStats,game:recordedGame,events:plays.filter(event=>!event.type.startsWith('OPP_')),opponentName:game.opponent_name},'missing-scoring-stats');
+  for (const key of ['largest_lead','max_scoring_run']) {
+    const row = container.querySelector(`[data-stat="${key}"]`);
+    assert.equal(row.querySelectorAll('[title="Not recorded"]').length,2);
+    assert.equal(row.querySelector('[aria-hidden="true"]'),null);
+  }
+  const {default:TeamStats} = await vite.ssrLoadModule('/src/components/TeamStats.jsx');
+  await act(async () => root.render(React.createElement(PreferencesContext.Provider,{value:{language:'he',theme:'light'}},
+    React.createElement(TeamStats,{stats:teamStats,game:recordedGame,events:plays,opponentName:game.opponent_name}))));
+  assert.match(container.querySelector('[data-stat="largest_lead"]').textContent,/יתרון שיא/);
+  assert.match(container.querySelector('[data-stat="max_scoring_run"]').textContent,/רצף נקודות מרבי/);
 });
 
 test("team stats show comparison bars only for available pairs and preserve recorded zero", async () => {

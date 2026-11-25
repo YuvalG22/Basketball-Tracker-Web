@@ -85,12 +85,13 @@ test("momentum includes opponent scoring events from the actual API contract", (
 });
 
 test("home renders a historical away result with correct team name and winner", async () => {
-  const html = await renderPage("/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["games"], [game]);
+  const html = await renderPage("/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["schedule-games"], [game]);
   assert.match(html, /LAST GAME/);
   assert.match(html, /Afeka/);
   assert.match(html, /font-bold text-ink">Opponents/);
   assert.doesNotMatch(html, /LIVE|automatically|מתעדכן/);
-  const empty = await renderPage("/src/pages/HomePage.jsx", "/", "/", ["games"], []);
+  assert.doesNotMatch(html, /Next game/);
+  const empty = await renderPage("/src/pages/HomePage.jsx", "/", "/", ["schedule-games"], []);
   assert.match(empty, /No completed games yet/);
 });
 
@@ -180,7 +181,7 @@ test("player season shot map aggregates locations across games and handles missi
 test("home, games and game details show playoff stage and game number", async () => {
   const playoff = { ...game, round_number: 0, is_playoff: true, playoff_stage: "SEMI_FINAL", playoff_game_number: 2 };
   const pages = [
-    ["/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["games"], [playoff]],
+    ["/src/pages/HomePage.jsx", "/", "/?season=25%2F26", ["schedule-games"], [playoff]],
     ["/src/pages/GamesPage.jsx", "/games", "/games?season=25%2F26", ["schedule-games"], [playoff]],
     ["/src/pages/GameDetailsPage.jsx", "/games/:gameId", "/games/finished", ["game-details", "finished"], { game: playoff, players: [], events: [] }],
   ];
@@ -199,8 +200,8 @@ test("home overview uses numeric completed results and links to last-game leader
     {...game,id:'win2',team_score:'9',opponent_score:'8',game_date_epoch:'200'},
   ];
   const detail={game,players:[player,{...player,player_id:'leader',player_name:'Game Leader',points:'20',rebounds:'10',assists:'8'}],events:[],lineupEvents:[]};
-  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['games'],history,[
-    [['games'],history],[['game-details',game.id],detail],
+  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['schedule-games'],history,[
+    [['game-details',game.id],detail],
   ]);
   for (const text of ['50%','10.5','9.8','Last game leaders','Recent games','Game Leader']) assert.ok(html.includes(text),text);
   assert.match(html,/href="\/players\/leader"/);
@@ -224,24 +225,43 @@ test("player details show season shooting totals with weighted percentages and e
   assert.doesNotMatch(empty,/NaN|Infinity/);
 });
 
-test("Home defaults to the empty current season and never substitutes last-season results", async () => {
+test("Home defaults to the next scheduled game in the current season without last-season results", async () => {
   const historical = {...game,season:'25/26',opponent_name:'Past opponent'};
-  const scheduled = {...game,id:'future',season:'26/27',status:'SCHEDULED',opponent_name:'Future opponent'};
-  const html = await renderPage('/src/pages/HomePage.jsx','/','/',['games'],[historical,scheduled]);
+  const scheduled = {...game,id:'future',season:'26/27',status:'SCHEDULED',opponent_name:'Future opponent',game_date_epoch:Date.parse('2026-11-27T10:45:00+02:00')};
+  const later = {...scheduled,id:'later',opponent_name:'Later opponent',game_date_epoch:Date.parse('2026-12-03T21:00:00+02:00')};
+  const deleted = {...scheduled,id:'deleted',is_deleted:true,opponent_name:'Deleted opponent',game_date_epoch:100};
+  const live = {...scheduled,id:'live',status:'LIVE',opponent_name:'Live opponent',game_date_epoch:200};
+  const previousSeason = {...scheduled,id:'previous',season:'25/26',opponent_name:'Previous fixture',game_date_epoch:300};
+  const html = await renderPage('/src/pages/HomePage.jsx','/','/',['schedule-games'],[historical,later,deleted,live,previousSeason,scheduled]);
   assert.match(html,/value="26\/27" selected/);
-  assert.match(html,/No completed games yet/); assert.match(html,/View last season/);
-  assert.match(html,/Results and game leaders will appear after the first completed game of this season/);
-  assert.doesNotMatch(html,/Past opponent|Future opponent|LAST GAME|Last game leaders/);
+  for (const text of ['Next game','Future opponent','27/11/2026','10:45','Away game','Round 2','Scheduled']) assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/Past opponent|Later opponent|Deleted opponent|Live opponent|Previous fixture|LAST GAME|Last game leaders|No completed games yet/);
+  assert.doesNotMatch(html,/href="\/games\/future"|aria-label="(?:Win|Loss|Draw)"/);
+  assert.ok(html.indexOf('>Afeka College</div>') < html.indexOf('>Future opponent</div>'));
   assert.match(html,/href="\/games\?season=26%2F27"/);
+});
+
+test("Home keeps completed results, overview and leaders alongside the next game", async () => {
+  const finished = {...game,season:'26/27'};
+  const scheduled = {...game,id:'future',season:'26/27',status:'SCHEDULED',is_home_game:true,opponent_name:'Future opponent',game_date_epoch:Date.parse('2026-11-27T00:00:00+02:00')};
+  const detail = {game:finished,players:[player]};
+  const html = await renderPage('/src/pages/HomePage.jsx','/','/',['schedule-games'],[scheduled,finished],[[['game-details',game.id],detail]]);
+  for (const text of ['Next game','Future opponent','LAST GAME','Last game leaders','Recent games','Test Player','Points per game','Time to be confirmed','Home game']) assert.ok(html.includes(text),text);
+  assert.match(html,/href="\/games\/finished"/);
+  assert.match(html,/href="\/players\/player"/);
+  assert.match(html,/1 Completed games/);
+  assert.doesNotMatch(html,/>00:00<|href="\/games\/future"|No completed games yet/);
+  assert.ok(html.indexOf('>Future opponent</div>') < html.indexOf('>Afeka College</div>'));
 });
 
 test("Home last-season selection filters results, overview, latest game and leaders together", async () => {
   const previous={...game,id:'previous',season:'25/26',opponent_name:'Previous opponent',team_score:12,opponent_score:10,game_date_epoch:100};
   const current={...game,id:'current',season:'26/27',opponent_name:'Current opponent',team_score:1,opponent_score:90,game_date_epoch:200};
   const detail={game:previous,players:[{...player,player_name:'Previous leader'}]};
-  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['games'],[current,previous],[[['game-details','previous'],detail]]);
+  const scheduled={...current,id:'future',status:'SCHEDULED',opponent_name:'Current fixture'};
+  const html=await renderPage('/src/pages/HomePage.jsx','/','/?season=25%2F26',['schedule-games'],[current,previous,scheduled],[[['game-details','previous'],detail]]);
   assert.match(html,/Previous opponent/); assert.match(html,/Previous leader/); assert.match(html,/100%/);
-  assert.doesNotMatch(html,/Current opponent/); assert.match(html,/href="\/games\?season=25%2F26"/);
+  assert.doesNotMatch(html,/Current opponent|Current fixture|Next game/); assert.match(html,/href="\/games\?season=25%2F26"/);
 });
 
 test("season APIs send filters and preserve unfiltered historical player lookups",async()=>{
@@ -258,7 +278,7 @@ test("season APIs send filters and preserve unfiltered historical player lookups
 
 test("eventless home results and direct URLs cannot open empty summaries", async () => {
   const empty={...game,has_events:false,season:"26/27"};
-  const home=await renderPage("/src/pages/HomePage.jsx","/","/",["games"],[empty]);
+  const home=await renderPage("/src/pages/HomePage.jsx","/","/",["schedule-games"],[empty]);
   assert.match(home,/No stats available/); assert.doesNotMatch(home,/href="\/games\/finished"/);
   const summary=await renderPage("/src/pages/GameDetailsPage.jsx","/games/:gameId","/games/finished",["game-details","finished"],{game:empty,events:[],players:[]});
   assert.match(summary,/No stats available/); assert.match(summary,/Back to games/); assert.doesNotMatch(summary,/role="tablist"/);

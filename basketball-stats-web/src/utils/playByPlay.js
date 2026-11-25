@@ -3,7 +3,8 @@ export function periodLabel(period, regulation = 4) {
 }
 
 export function filterPlays(events, period) {
-  return period === "all" ? events : events.filter(event => Number(event.period) === Number(period));
+  return events.filter(event => !event.is_deleted && /^(OPP_)?(TWO|THREE|FT)_MADE$/.test(event.type) &&
+    (period === "all" || Number(event.period) === Number(period)));
 }
 
 export function scoreLabel(event, isHomeGame) {

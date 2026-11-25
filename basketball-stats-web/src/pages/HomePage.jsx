@@ -3,10 +3,10 @@ import GameSummaryLink, { canOpenSummary } from "../components/GameSummaryLink";
 import { usePreferences } from "../preferences/context";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CURRENT_SEASON, gameSeason } from "../utils/schedule";
+import { CURRENT_SEASON, gameSeason, seasonGames, scheduledGameTime } from "../utils/schedule";
 
 const LAST_SEASON = "25/26";
-import { getGames, getGameDetails } from "../api/gamesApi";
+import { getScheduleGames, getGameDetails } from "../api/gamesApi";
 import TeamLogo from "../components/TeamLogo";
 import PlayerAvatar from "../components/PlayerAvatar";
 import PlayerMinutes from "../components/PlayerMinutes";
@@ -25,15 +25,20 @@ export default function HomePage() {
     setParams(next);
   };
   const gamesLink = `/games?season=${encodeURIComponent(season)}`;
-  const history = useQuery({ queryKey: ["games"], queryFn: getGames });
+  const history = useQuery({
+    queryKey: ["schedule-games"], queryFn: getScheduleGames,
+    staleTime: 60000, refetchOnMount: true, refetchOnWindowFocus: true, refetchOnReconnect: true,
+  });
   const recent = (history.data ?? []).filter(item => !item.is_deleted && item.status === "FINISHED" && gameSeason(item) === season)
     .sort((a, b) => Number(b.game_date_epoch) - Number(a.game_date_epoch));
   const game = recent[0] ?? null;
+  const nextGame = seasonGames(history.data ?? [], season).find(item => item.status === "SCHEDULED");
+  const nextGameCard = nextGame ? <NextGame game={nextGame} gamesLink={gamesLink} /> : null;
   const detail = useQuery({ queryKey: ["game-details", String(game?.id)], queryFn: () => getGameDetails(game.id), enabled: canOpenSummary(game) });
   const date = value => new Date(Number(value)).toLocaleDateString(language === "he" ? "he-IL" : "en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-  const header = <div className="flex flex-wrap items-end justify-between gap-4">
-    <div><h1 className="text-3xl font-bold sm:text-4xl">{t("Home")}</h1><p className="mt-2 text-sm text-muted">{t("Your team, at a glance.")}</p></div>
+  const header = <div className="flex flex-wrap items-center justify-between gap-4">
+    <TeamLogo name="Afeka" unframed className="h-20 w-56 max-w-full sm:h-24 sm:w-72" />
     <div className="flex flex-wrap items-center gap-3">
       {history.isSuccess && <span className="rounded-full border border-line px-3 py-1.5 text-xs text-muted">{recent.length} {t("Completed games")}</span>}
       <label className="flex items-center gap-2 text-sm font-medium">
@@ -48,7 +53,7 @@ export default function HomePage() {
   if (history.isLoading) return <section className="space-y-6">{header}<p role="status">{t("Loading...")}</p></section>;
   if (history.isError) return <section className="space-y-6">{header}<div role="alert" className="rounded-2xl bg-surface p-5"><p>{t("Unable to load data. Please try again.")}</p><button className="mt-3 rounded-xl bg-raised px-4 py-2" onClick={() => history.refetch()}>{t("Retry")}</button></div></section>;
   if (!game) return <section className="space-y-6">{header}
-    <div className="rounded-[24px] border border-line bg-surface px-5 py-12 text-center">
+    {nextGameCard ?? <div className="rounded-[24px] border border-line bg-surface px-5 py-12 text-center">
       <p className="text-xs font-semibold text-accent">{t("Season")} {season}</p>
       <h2 className="mt-3 text-xl font-bold">{t("No completed games yet")}</h2>
       <p className="mt-2 text-sm text-muted">{t("Results and game leaders will appear after the first completed game of this season.")}</p>
@@ -56,7 +61,7 @@ export default function HomePage() {
         <Link to={gamesLink} className="inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-white">{t("View all games")} <ForwardArrow /></Link>
         {season === CURRENT_SEASON && <button type="button" onClick={() => selectSeason(LAST_SEASON)} className="min-h-11 rounded-xl bg-raised px-4 text-sm font-semibold">{t("View last season")}</button>}
       </div>
-    </div>
+    </div>}
   </section>;
 
   const result = resultOf(game);
@@ -64,6 +69,7 @@ export default function HomePage() {
   const awayTeam = { name: game.is_home_game ? game.opponent_name : "Afeka", score: Number(game.is_home_game ? game.opponent_score : game.team_score) };
   return <section className="space-y-6">
     {header}
+    {nextGameCard}
     <TeamOverview games={recent} />
 
     <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
@@ -110,6 +116,38 @@ export default function HomePage() {
         {history.isPending && <p role="status" className="py-4 text-sm text-muted">{t("Loading...")}</p>}
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-4"><Link to="/season" className="flex min-h-11 items-center justify-center rounded-xl bg-raised px-2 text-center text-xs font-semibold">{t("Season Stats")}</Link><Link to="/players" className="flex min-h-11 items-center justify-center rounded-xl bg-raised px-2 text-center text-xs font-semibold">{t("Players")}</Link></div>
       </section>
+    </div>
+  </section>;
+}
+
+function NextGame({ game, gamesLink }) {
+  const { t, language } = usePreferences();
+  const startTime = scheduledGameTime(game);
+  const homeTeam = { name: game.is_home_game ? "Afeka" : game.opponent_name };
+  const awayTeam = { name: game.is_home_game ? game.opponent_name : "Afeka" };
+  const date = new Date(Number(game.game_date_epoch));
+  return <section aria-label={t("Next game")} className="home-scorecard overflow-hidden rounded-[24px] border border-line bg-surface">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-7 sm:pt-6">
+      <h2 className="text-lg font-bold text-accent">{t("Next game")}</h2>
+      <span className="rounded-full bg-raised px-3 py-1 text-sm font-medium text-muted">{t("Scheduled")}</span>
+    </div>
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 text-sm text-muted">
+      <span>{formatGameRound(game, t)}</span><span aria-hidden="true">·</span>
+      <time dateTime={date.toISOString()}>{date.toLocaleDateString(language === "he" ? "he-IL" : "en-GB", { timeZone: "Asia/Jerusalem", day: "2-digit", month: "2-digit", year: "numeric" })}</time>
+      <span aria-hidden="true">·</span><span>{t(game.is_home_game ? "Home game" : "Away game")}</span>
+    </div>
+    <div dir="ltr" className="home-scoreboard">
+      <ScoreTeam team={awayTeam} />
+      <div className="text-center">
+        <span className="text-3xl font-bold text-ink">{t("vs")}</span>
+        <div dir={language === "he" ? "rtl" : "ltr"} className="mt-2 text-sm text-muted">
+          {startTime ? <time dateTime={date.toISOString()} dir="ltr" className="font-semibold tabular-nums text-ink">{startTime}</time> : t("Time to be confirmed")}
+        </div>
+      </div>
+      <ScoreTeam team={homeTeam} />
+    </div>
+    <div className="border-t border-line px-5 py-2 sm:px-7">
+      <Link to={gamesLink} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent">{t("View all games")}</Link>
     </div>
   </section>;
 }

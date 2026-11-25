@@ -47,7 +47,7 @@ function GameStatsContent({
           {tabs.map(([key, label]) => <button key={key} id={`${tabId}-${key}`} role="tab" aria-selected={activeTab === key} aria-controls={`${tabId}-${key}-panel`} tabIndex={activeTab === key ? 0 : -1} onClick={() => setActiveTab(key)} className={`min-h-11 shrink-0 border-b-2 px-3 text-sm font-semibold ${activeTab === key ? "border-accent text-accent" : "border-transparent text-muted"}`}>{t(label)}</button>)}
         </div>
         {tabs.map(([key]) => <div key={key} id={`${tabId}-${key}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${key}`} hidden={activeTab !== key} tabIndex={0}>
-          {key === "box" ? <BoxScore game={game} players={players} events={events} lineupEvents={lineupEvents} /> : key === "pbp" ? <PlayByPlay events={events} game={game} players={players} /> : key === "team" ? <TeamStats stats={teamStats} opponentName={game.opponent_name} /> : <GameShotMap shots={shots} opponentName={game.opponent_name} />}
+          {key === "box" ? <BoxScore game={game} players={players} events={events} lineupEvents={lineupEvents} /> : key === "pbp" ? <PlayByPlay events={events} game={game} players={players} /> : key === "team" ? <TeamStats stats={teamStats} opponentName={game.opponent_name} game={game} events={events} /> : <GameShotMap shots={shots} opponentName={game.opponent_name} />}
         </div>)}
       </div>
     </section>;
