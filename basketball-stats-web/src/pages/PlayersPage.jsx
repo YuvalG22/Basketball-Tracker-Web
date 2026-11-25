@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { usePreferences } from "../preferences/context";
 import PlayerAvatar from "../components/PlayerAvatar";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { getPlayers } from "../api/playersApi";
 export default function PlayersPage() {
+  const [season, setSeason] = useState("26/27");
   const {
     t, playerName
   } = usePreferences();
@@ -17,16 +19,21 @@ export default function PlayersPage() {
   });
   if (isLoading) return <p>{t("Loading...")}</p>;
   if (isError) return <p>{t("Unable to load data. Please try again.")}{/* error details are not user-facing */}</p>;
+  const visible = data.filter(p => season === "all" || ["active", "left", "review-active"].includes(p.season_memberships?.[season]));
+  const seasons = [...new Set(["26/27", "25/26", ...data.flatMap(p => Object.keys(p.season_memberships ?? {}))])].sort().reverse();
   return <section className="space-y-5">
       <div>
         <h1 className="text-3xl font-bold">{t("Players")}</h1>
         <p className="mt-1 text-sm text-muted">
-          {data.length}{" "}{t("players")}
+          {visible.length}{" "}{t("players")}
         </p>
       </div>
 
+      <label className="flex items-center gap-3">{t("Season")}<select aria-label={t("Season")} value={season} onChange={e => setSeason(e.target.value)} className="rounded-lg bg-surface p-2">{seasons.map(s => <option key={s} value={s}>{s}</option>)}<option value="all">{t("All players")}</option></select></label>
+      {data.some(p => ["unreviewed", "review-active"].includes(p.season_memberships?.["26/27"])) && <p>{t("Review the 26/27 team in the Android app.")}</p>}
+      {visible.length === 0 && <p>{t("No players in this season.")}</p>}
       <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {data.map(player => <Link key={player.id} to={`/players/${player.id}`} className="block rounded-[20px] bg-surface p-4 active:scale-[0.98]">
+        {visible.map(player => <Link key={player.id} to={`/players/${player.id}`} className="block rounded-[20px] bg-surface p-4 active:scale-[0.98]">
 
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -35,6 +42,7 @@ export default function PlayersPage() {
                 <div className="min-w-0">
                   <h2 className="break-words text-lg font-bold text-ink">
                     {playerName(player.name)}
+                    {season !== "all" && player.season_memberships?.[season] === "left" && <span className="ml-2 text-sm text-muted">{t("Left team")}</span>}
                   </h2>
                   <p dir="ltr" className="w-fit text-sm text-muted">#{player.number ?? "-"}</p>
 
