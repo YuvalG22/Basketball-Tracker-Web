@@ -79,16 +79,16 @@ function GameHeader({
         </div>
       </div>
       <div className="game-result rounded-2xl px-3 py-4" style={{
-        "--result-left": game.is_home_game ? "var(--momentum-team)" : "var(--momentum-opponent)",
-        "--result-right": game.is_home_game ? "var(--momentum-opponent)" : "var(--momentum-team)"
+        "--result-left": game.is_home_game ? "var(--momentum-opponent)" : "var(--momentum-team)",
+        "--result-right": game.is_home_game ? "var(--momentum-team)" : "var(--momentum-opponent)"
       }}>
       <div dir="ltr" className="mx-auto grid w-full max-w-xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
-        <HeaderTeam name={homeTeamName} />
+        <HeaderTeam name={awayTeamName} />
 
         <div className="text-center">
           <div dir="ltr" className="whitespace-nowrap text-2xl font-black tracking-tight text-ink sm:text-4xl">
 
-            {homeScore} - {awayScore}
+            {awayScore} - {homeScore}
           </div>
 
           <div className="mt-2 text-sm font-bold text-muted">{t("FINAL")}
@@ -97,7 +97,7 @@ function GameHeader({
           </div>
         </div>
 
-        <HeaderTeam name={awayTeamName} />
+        <HeaderTeam name={homeTeamName} />
       </div>
       </div>
       <div className="mt-4">

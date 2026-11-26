@@ -83,9 +83,9 @@ export default function HomePage() {
             <span>{formatGameRound(game, t)}</span><span aria-hidden="true">·</span><span>{date(game.game_date_epoch)}</span><span aria-hidden="true">·</span><span>{t(game.is_home_game ? "Home game" : "Away game")}</span>
           </div>
           <div dir="ltr" className="home-scoreboard">
-            <ScoreTeam team={homeTeam} winner={homeTeam.score > awayTeam.score} />
-            <div className="text-center"><div className="home-score-numbers"><span>{homeTeam.score}</span><span className="home-score-dash" aria-hidden="true">–</span><span>{awayTeam.score}</span></div><div className="mt-2 text-[11px] font-semibold tracking-wide text-muted">{t("FINAL")}</div></div>
             <ScoreTeam team={awayTeam} winner={awayTeam.score > homeTeam.score} />
+            <div className="text-center"><div className="home-score-numbers"><span>{awayTeam.score}</span><span className="home-score-dash" aria-hidden="true">–</span><span>{homeTeam.score}</span></div><div className="mt-2 text-[11px] font-semibold tracking-wide text-muted">{t("FINAL")}</div></div>
+            <ScoreTeam team={homeTeam} winner={homeTeam.score > awayTeam.score} />
           </div>
           <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-4 text-sm font-semibold text-accent sm:px-7">{canOpenSummary(game) && <><span>{t("Open game summary")}</span><ForwardArrow /></>}</div>
         </GameSummaryLink>
